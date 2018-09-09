@@ -59,6 +59,8 @@
 
 /* Private define ------------------------------------------------------------*/
 
+#define ETH_CS_Pin GPIO_PIN_8
+#define ETH_CS_GPIO_Port GPIOA
 #define RTC_CS_Pin GPIO_PIN_9
 #define RTC_CS_GPIO_Port GPIOA
 #define HTP_CS_Pin GPIO_PIN_10

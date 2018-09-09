@@ -52,15 +52,26 @@
 #include "cmsis_os.h"
 
 /* USER CODE BEGIN Includes */
-
+#include "comm_lustro.h"
+#include "eth_lustro.h"
+#include "lustro_config.h"
+#include "transducers.h"
+#include <string.h>
 /* USER CODE END Includes */
 
 /* Private variables ---------------------------------------------------------*/
 I2C_HandleTypeDef hi2c1;
 
 SPI_HandleTypeDef hspi1;
+SPI_HandleTypeDef hspi2;
+
+UART_HandleTypeDef huart2;
 
 osThreadId defaultTaskHandle;
+osThreadId vEthReceiveHandle;
+osThreadId vEthStreamHandle;
+osThreadId vReadSensorsHandle;
+osTimerId encTimerHandle;
 
 /* USER CODE BEGIN PV */
 /* Private variables ---------------------------------------------------------*/
@@ -72,7 +83,13 @@ void SystemClock_Config(void);
 static void MX_GPIO_Init(void);
 static void MX_I2C1_Init(void);
 static void MX_SPI1_Init(void);
+static void MX_SPI2_Init(void);
+static void MX_USART2_UART_Init(void);
 void StartDefaultTask(void const * argument);
+void startEthReceive(void const * argument);
+void startEthStream(void const * argument);
+void startReadSensors(void const * argument);
+void encCallback(void const * argument);
 
 /* USER CODE BEGIN PFP */
 /* Private function prototypes -----------------------------------------------*/
@@ -95,7 +112,6 @@ int main(void)
   /* USER CODE END 1 */
 
   /* MCU Configuration----------------------------------------------------------*/
-
   /* Reset of all peripherals, Initializes the Flash interface and the Systick. */
   HAL_Init();
 
@@ -114,20 +130,33 @@ int main(void)
   MX_GPIO_Init();
   MX_I2C1_Init();
   MX_SPI1_Init();
+  MX_SPI2_Init();
+  MX_USART2_UART_Init();
   /* USER CODE BEGIN 2 */
+
+	ES_enc28j60Init(MAC);
+	ES_init_ip_arp_udp_tcp(MAC, ip, port);
+	//  HAL_GPIO_WritePin(ETH_RES_GPIO_Port, ETH_RES_Pin, GPIO_PIN_SET);
+	enc28j60PhyWrite(PHLCON, 0x476);
+	enc28j60clkout(2);
 
   /* USER CODE END 2 */
 
   /* USER CODE BEGIN RTOS_MUTEX */
-  /* add mutexes, ... */
+	/* add mutexes, ... */
   /* USER CODE END RTOS_MUTEX */
 
   /* USER CODE BEGIN RTOS_SEMAPHORES */
-  /* add semaphores, ... */
+	/* add semaphores, ... */
   /* USER CODE END RTOS_SEMAPHORES */
 
+  /* Create the timer(s) */
+  /* definition and creation of encTimer */
+  osTimerDef(encTimer, encCallback);
+  encTimerHandle = osTimerCreate(osTimer(encTimer), osTimerPeriodic, NULL);
+
   /* USER CODE BEGIN RTOS_TIMERS */
-  /* start timers, add new ones, ... */
+	/* start timers, add new ones, ... */
   /* USER CODE END RTOS_TIMERS */
 
   /* Create the thread(s) */
@@ -135,12 +164,24 @@ int main(void)
   osThreadDef(defaultTask, StartDefaultTask, osPriorityNormal, 0, 128);
   defaultTaskHandle = osThreadCreate(osThread(defaultTask), NULL);
 
+  /* definition and creation of vEthReceive */
+  osThreadDef(vEthReceive, startEthReceive, osPriorityBelowNormal, 0, 128);
+  vEthReceiveHandle = osThreadCreate(osThread(vEthReceive), NULL);
+
+  /* definition and creation of vEthStream */
+  osThreadDef(vEthStream, startEthStream, osPriorityNormal, 0, 128);
+  vEthStreamHandle = osThreadCreate(osThread(vEthStream), NULL);
+
+  /* definition and creation of vReadSensors */
+  osThreadDef(vReadSensors, startReadSensors, osPriorityAboveNormal, 0, 128);
+  vReadSensorsHandle = osThreadCreate(osThread(vReadSensors), NULL);
+
   /* USER CODE BEGIN RTOS_THREADS */
-  /* add threads, ... */
+	/* add threads, ... */
   /* USER CODE END RTOS_THREADS */
 
   /* USER CODE BEGIN RTOS_QUEUES */
-  /* add queues, ... */
+	/* add queues, ... */
   /* USER CODE END RTOS_QUEUES */
  
 
@@ -151,14 +192,14 @@ int main(void)
 
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
-  while (1)
-  {
+	while (1)
+	{
 
   /* USER CODE END WHILE */
 
   /* USER CODE BEGIN 3 */
 
-  }
+	}
   /* USER CODE END 3 */
 
 }
@@ -254,6 +295,49 @@ static void MX_SPI1_Init(void)
 
 }
 
+/* SPI2 init function */
+static void MX_SPI2_Init(void)
+{
+
+  /* SPI2 parameter configuration*/
+  hspi2.Instance = SPI2;
+  hspi2.Init.Mode = SPI_MODE_MASTER;
+  hspi2.Init.Direction = SPI_DIRECTION_2LINES;
+  hspi2.Init.DataSize = SPI_DATASIZE_8BIT;
+  hspi2.Init.CLKPolarity = SPI_POLARITY_LOW;
+  hspi2.Init.CLKPhase = SPI_PHASE_1EDGE;
+  hspi2.Init.NSS = SPI_NSS_SOFT;
+  hspi2.Init.BaudRatePrescaler = SPI_BAUDRATEPRESCALER_2;
+  hspi2.Init.FirstBit = SPI_FIRSTBIT_MSB;
+  hspi2.Init.TIMode = SPI_TIMODE_DISABLE;
+  hspi2.Init.CRCCalculation = SPI_CRCCALCULATION_DISABLE;
+  hspi2.Init.CRCPolynomial = 10;
+  if (HAL_SPI_Init(&hspi2) != HAL_OK)
+  {
+    _Error_Handler(__FILE__, __LINE__);
+  }
+
+}
+
+/* USART2 init function */
+static void MX_USART2_UART_Init(void)
+{
+
+  huart2.Instance = USART2;
+  huart2.Init.BaudRate = 115200;
+  huart2.Init.WordLength = UART_WORDLENGTH_8B;
+  huart2.Init.StopBits = UART_STOPBITS_1;
+  huart2.Init.Parity = UART_PARITY_NONE;
+  huart2.Init.Mode = UART_MODE_TX_RX;
+  huart2.Init.HwFlowCtl = UART_HWCONTROL_NONE;
+  huart2.Init.OverSampling = UART_OVERSAMPLING_16;
+  if (HAL_UART_Init(&huart2) != HAL_OK)
+  {
+    _Error_Handler(__FILE__, __LINE__);
+  }
+
+}
+
 /** Configure pins as 
         * Analog 
         * Input 
@@ -271,10 +355,10 @@ static void MX_GPIO_Init(void)
   __HAL_RCC_GPIOB_CLK_ENABLE();
 
   /*Configure GPIO pin Output Level */
-  HAL_GPIO_WritePin(GPIOA, RTC_CS_Pin|HTP_CS_Pin, GPIO_PIN_RESET);
+  HAL_GPIO_WritePin(GPIOA, ETH_CS_Pin|RTC_CS_Pin|HTP_CS_Pin, GPIO_PIN_RESET);
 
-  /*Configure GPIO pins : RTC_CS_Pin HTP_CS_Pin */
-  GPIO_InitStruct.Pin = RTC_CS_Pin|HTP_CS_Pin;
+  /*Configure GPIO pins : ETH_CS_Pin RTC_CS_Pin HTP_CS_Pin */
+  GPIO_InitStruct.Pin = ETH_CS_Pin|RTC_CS_Pin|HTP_CS_Pin;
   GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
@@ -291,12 +375,108 @@ void StartDefaultTask(void const * argument)
 {
 
   /* USER CODE BEGIN 5 */
-  /* Infinite loop */
-  for(;;)
-  {
-    osDelay(1);
-  }
+	/* Infinite loop */
+	for(;;) {
+		osDelay(1);
+	}
   /* USER CODE END 5 */ 
+}
+
+/* startEthReceive function */
+void startEthReceive(void const * argument)
+{
+  /* USER CODE BEGIN startEthReceive */
+	/* Infinite loop */
+	uint16_t packet_id = 0;
+	uint8_t flag = 10;
+	for(;;) {
+		if ( !eth_pktrecv_valid() ) {
+			osDelay(1);
+			continue;
+		}
+		received_size = enc28j60PacketReceive(REC_BUF_SIZE, received);
+
+		packet_id = eth_pktid( received );
+		flag = eth_packet_handler(received, received_size);
+		if (flag == 0)
+			uart_send("not for us\n\r");
+		else if ( flag == 1 )
+			uart_send("ARP received\n\r");
+		else if (flag == 2)
+			uart_send("Ping received\n\r");
+		else if (flag == 3)
+			uart_send("SYN received\n\r");
+		else if (flag == 4)
+			uart_send("FIN received\n\r");
+		else if (flag == 5)
+			uart_send("keep-alive received\n\r");
+		else if (flag == 6)
+			uart_send("ACK received\n\r");
+		else
+			uart_send("flag unknown\n\r");
+		osDelay(10);
+	}
+  /* USER CODE END startEthReceive */
+}
+
+/* startEthStream function */
+void startEthStream(void const * argument)
+{
+  /* USER CODE BEGIN startEthStream */
+	/* Infinite loop */
+	for(;;) {
+		if ( !downstream_enable ) {
+			osDelay(1);
+			continue;
+		}
+		udp_send(data_readouts, 8);
+		sprintf(message, "UDP packet:\n\r\t0x%02x\t0x%02x\t0x%02x\t0x%02x\n\r\t0x%02x\t0x%02x\t0x%02x\t0x%02x\n\r",
+				data_readouts[0], data_readouts[1], data_readouts[2], data_readouts[3],
+				data_readouts[4], data_readouts[5], data_readouts[6], data_readouts[7]);
+		uart_send(message);
+		osDelay(100 * downstream_interval);
+	}
+  /* USER CODE END startEthStream */
+}
+
+/* startReadSensors function */
+void startReadSensors(void const * argument)
+{
+  /* USER CODE BEGIN startReadSensors */
+	/* Infinite loop */
+
+	uptime = xTaskGetTickCount();
+
+	uint16_t configuration = configADC(7, mode_continuous, 0);
+	saveConfigADC( &hi2c1, aDiglett, configuration );
+	saveConfigADC( &hi2c1, aAbra, configuration );
+	saveConfigADC( &hi2c1, aKadabra, configuration );
+	uint16_t wDiglett = 0, wAbra = 0 , wKadabra = 0;
+	uint16_t counter = 0;
+	for(;;) {
+		wDiglett = readADC(aDiglett);
+		wAbra = readADC(aAbra);
+		wKadabra = readADC(aKadabra);
+		data_readouts[0] = wDiglett;
+		data_readouts[1] = wDiglett >> 8;
+		data_readouts[2] = wAbra;
+		data_readouts[3] = wAbra >> 8;
+		data_readouts[4] = wKadabra;
+		data_readouts[5] = wKadabra >> 8;
+		strcpy( message, "" );
+		sprintf( message, "sensors: %d\t%d\t%d\t%d\n\r", counter++, wDiglett, wAbra, wKadabra );
+		uart_send( message );
+		osDelay( 100 * data_readout_interval );
+	}
+  /* USER CODE END startReadSensors */
+}
+
+/* encCallback function */
+void encCallback(void const * argument)
+{
+  /* USER CODE BEGIN encCallback */
+
+  /* USER CODE END encCallback */
 }
 
 /**
@@ -329,10 +509,10 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
 void _Error_Handler(char *file, int line)
 {
   /* USER CODE BEGIN Error_Handler_Debug */
-  /* User can add his own implementation to report the HAL error return state */
-  while(1)
-  {
-  }
+	/* User can add his own implementation to report the HAL error return state */
+	while(1)
+	{
+	}
   /* USER CODE END Error_Handler_Debug */
 }
 
@@ -347,7 +527,7 @@ void _Error_Handler(char *file, int line)
 void assert_failed(uint8_t* file, uint32_t line)
 { 
   /* USER CODE BEGIN 6 */
-  /* User can add his own implementation to report the file name and line number,
+	/* User can add his own implementation to report the file name and line number,
      tex: printf("Wrong parameters value: file %s on line %d\r\n", file, line) */
   /* USER CODE END 6 */
 }
