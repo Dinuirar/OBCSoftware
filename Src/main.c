@@ -112,6 +112,7 @@ int main(void)
   /* USER CODE END 1 */
 
   /* MCU Configuration----------------------------------------------------------*/
+
   /* Reset of all peripherals, Initializes the Flash interface and the Systick. */
   HAL_Init();
 
@@ -139,6 +140,7 @@ int main(void)
 	//  HAL_GPIO_WritePin(ETH_RES_GPIO_Port, ETH_RES_Pin, GPIO_PIN_SET);
 	enc28j60PhyWrite(PHLCON, 0x476);
 	enc28j60clkout(2);
+	uart_send("initiated\n\r");
 
   /* USER CODE END 2 */
 
@@ -353,16 +355,27 @@ static void MX_GPIO_Init(void)
   /* GPIO Ports Clock Enable */
   __HAL_RCC_GPIOA_CLK_ENABLE();
   __HAL_RCC_GPIOB_CLK_ENABLE();
+  __HAL_RCC_GPIOC_CLK_ENABLE();
 
   /*Configure GPIO pin Output Level */
-  HAL_GPIO_WritePin(GPIOA, ETH_CS_Pin|RTC_CS_Pin|HTP_CS_Pin, GPIO_PIN_RESET);
+  HAL_GPIO_WritePin(GPIOC, CS_RTC_Pin|ETH_CS_Pin, GPIO_PIN_RESET);
 
-  /*Configure GPIO pins : ETH_CS_Pin RTC_CS_Pin HTP_CS_Pin */
-  GPIO_InitStruct.Pin = ETH_CS_Pin|RTC_CS_Pin|HTP_CS_Pin;
+  /*Configure GPIO pin Output Level */
+  HAL_GPIO_WritePin(HTP_CS_GPIO_Port, HTP_CS_Pin, GPIO_PIN_RESET);
+
+  /*Configure GPIO pins : CS_RTC_Pin ETH_CS_Pin */
+  GPIO_InitStruct.Pin = CS_RTC_Pin|ETH_CS_Pin;
   GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
-  HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
+  HAL_GPIO_Init(GPIOC, &GPIO_InitStruct);
+
+  /*Configure GPIO pin : HTP_CS_Pin */
+  GPIO_InitStruct.Pin = HTP_CS_Pin;
+  GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
+  GPIO_InitStruct.Pull = GPIO_NOPULL;
+  GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
+  HAL_GPIO_Init(HTP_CS_GPIO_Port, &GPIO_InitStruct);
 
 }
 
@@ -387,7 +400,6 @@ void startEthReceive(void const * argument)
 {
   /* USER CODE BEGIN startEthReceive */
 	/* Infinite loop */
-	uint16_t packet_id = 0;
 	uint8_t flag = 10;
 	for(;;) {
 		if ( !eth_pktrecv_valid() ) {
@@ -396,8 +408,9 @@ void startEthReceive(void const * argument)
 		}
 		received_size = enc28j60PacketReceive(REC_BUF_SIZE, received);
 
-		packet_id = eth_pktid( received );
 		flag = eth_packet_handler(received, received_size);
+		if (_SILENCE)
+			continue;
 		if (flag == 0)
 			uart_send("not for us\n\r");
 		else if ( flag == 1 )
@@ -451,20 +464,24 @@ void startReadSensors(void const * argument)
 	saveConfigADC( &hi2c1, aDiglett, configuration );
 	saveConfigADC( &hi2c1, aAbra, configuration );
 	saveConfigADC( &hi2c1, aKadabra, configuration );
-	uint16_t wDiglett = 0, wAbra = 0 , wKadabra = 0;
+	saveConfigADC( &hi2c1, aRaichu, configuration );
+	uint16_t wDiglett = 0, wAbra = 0 , wKadabra = 0, wRaichu = 0;
 	uint16_t counter = 0;
 	for(;;) {
 		wDiglett = readADC(aDiglett);
 		wAbra = readADC(aAbra);
 		wKadabra = readADC(aKadabra);
+		wRaichu = readADC(aRaichu);
 		data_readouts[0] = wDiglett;
 		data_readouts[1] = wDiglett >> 8;
 		data_readouts[2] = wAbra;
 		data_readouts[3] = wAbra >> 8;
 		data_readouts[4] = wKadabra;
 		data_readouts[5] = wKadabra >> 8;
+		data_readouts[6] = wRaichu;
+		data_readouts[7] = wRaichu >> 8;
 		strcpy( message, "" );
-		sprintf( message, "sensors: %d\t%d\t%d\t%d\n\r", counter++, wDiglett, wAbra, wKadabra );
+		sprintf( message, "Sensors %d\t%d\t%d\t%d\t%d\n\r", counter++, wDiglett, wAbra, wKadabra, wRaichu );
 		uart_send( message );
 		osDelay( 100 * data_readout_interval );
 	}

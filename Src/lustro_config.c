@@ -17,8 +17,19 @@ uint8_t downstream_enable = 0;
 uint8_t downstream_minutes = 0;
 uint8_t downstream_interval = 10;
 
-uint16_t data_readout_interval = 10;
+uint8_t _SILENCE = 0;
+uint16_t DTR = 0x0000;
+
+uint16_t data_readout_interval = 1;
 uint16_t datastream_time = 10;
 
-uint8_t data_readouts[] = {0, 0, 0, 0, 0, 0, 0, 0};
+uint8_t data_readouts[] = {
+		0, 0, 0, 0, 0, 0, 0, 0,
+		0, 0, 0, 0, 0, 0, 0, 0,
+		0, 0, 0, 0, 0, 0, 0, 0,
+		0, 0, 0, 0, 0, 0, 0, 0
+};
 uint32_t uptime = 1;
+
+// ground station connection indicator
+uint8_t isGSconnected = 0;
