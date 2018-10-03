@@ -453,6 +453,11 @@ void startReadSensors(void const * argument)
 	saveConfigADC( &hi2c1, aKadabra, configuration );
 	uint16_t wDiglett = 0, wAbra = 0 , wKadabra = 0;
 	uint16_t counter = 0;
+	/* RTC begin*/
+//	unsigned char timedat[8] = {0};
+//	unsigned char timebuf[16] = {0};
+//	DS1302_Init();
+	/* RTC end*/
 	for(;;) {
 		wDiglett = readADC(aDiglett);
 		wAbra = readADC(aAbra);
@@ -467,6 +472,12 @@ void startReadSensors(void const * argument)
 		sprintf( message, "sensors: %d\t%d\t%d\t%d\n\r", counter++, wDiglett, wAbra, wKadabra );
 		uart_send( message );
 		osDelay( 100 * data_readout_interval );
+		/* RTC begin*/
+//		DS1302_ReadTime(timedat);
+//		sprintf((char*)timebuf, "%02d:%02d:%02d\r\n", timedat[4], timedat[5], timedat[6]);
+//		uart_send( timebuf );
+		/* RTC end*/
+
 	}
   /* USER CODE END startReadSensors */
 }
