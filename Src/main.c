@@ -57,6 +57,8 @@
 #include "lustro_config.h"
 #include "transducers.h"
 #include "data.h"
+#include "diskio.h"
+#include "ff.h"
 //#include "ds18b20/ds18b20.h"
 #include <string.h>
 //#include "ds18b20/ds18b20.h"
@@ -592,6 +594,51 @@ void startReadSensors(void const * argument)
 
 	uint16_t counter = 0;
 	int temp_int = 0;
+
+
+/* SC Card demo begin */
+	// CS obecnie skonfigurowany jest pozyczony od RTC, czyli GPIOA 9
+	// konfiguracja SPI:
+//	hspi1.Init.Mode = SPI_MODE_MASTER; //
+//	  hspi1.Init.Direction = SPI_DIRECTION_2LINES; //
+//	  hspi1.Init.DataSize = SPI_DATASIZE_8BIT; //
+//	  hspi1.Init.CLKPolarity = SPI_POLARITY_LOW; //
+//	  hspi1.Init.CLKPhase = SPI_PHASE_1EDGE; //
+//	  hspi1.Init.NSS = SPI_NSS_SOFT; //
+//	  hspi1.Init.BaudRatePrescaler = SPI_BAUDRATEPRESCALER_128; //
+//	  hspi1.Init.FirstBit = SPI_FIRSTBIT_MSB; //
+//	//  hspi1.Init.TIMode = SPI_TIMODE_DISABLE; // nie ma w pliku sd
+//	  hspi1.Init.CRCCalculation = SPI_CRCCALCULATION_DISABLE; // nie ma w pliku sd
+//	  hspi1.Init.CRCPolynomial = 7; //
+
+//	char buffer[128];
+//	static FATFS g_sFatFs;
+//	FRESULT fresult;
+//	FIL file;
+//	int len;
+//	UINT bytes_written=10;
+//	UINT bufsize=128;
+//
+//	//mount SD card
+//	fresult = f_mount(&g_sFatFs, "", 0);
+//
+//	for (int i=0; i<2; i++){
+//	//open file on SD card
+//	fresult = f_open(&file, "file.txt", FA_OPEN_ALWAYS | FA_WRITE);
+//	//go to the end of the file
+//	fresult = f_lseek(&file, file.fsize);
+//	//generate some string
+//	len = sprintf( buffer, "pierwsza linia, iteracja %d\r\n",i);
+//	//write data to the file
+//	fresult = f_write(&file, &buffer, bufsize, &bytes_written);
+//	len = sprintf( buffer, "druga linia, iteracja %d\r\n",i);
+//	fresult = f_write(&file, &buffer, bufsize, &bytes_written);
+//	//close file
+//	fresult = f_close(&file);
+//	}
+/* SD Card demo end*/
+
+
 	for(;;) {
 //		//read_temp( temp , no );
 //		//temp_int = ds18b20_read_temp();
