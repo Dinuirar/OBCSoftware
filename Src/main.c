@@ -511,6 +511,7 @@ void startEthReceive(void const * argument)
 
 		if (_SILENCE)
 			continue;
+//		xSemaphoreTake( mxUartHandle, UART_TIMEOUT);
 		if (flag == 0)
 			uart_send("not for us\n\r");
 		else if ( flag == 1 )
@@ -527,6 +528,7 @@ void startEthReceive(void const * argument)
 			uart_send("ACK received\n\r");
 		else
 			uart_send("flag unknown\n\r");
+//		xSemaphoreGive( mxUartHandle );
 		osDelay(10);
 	}
   /* USER CODE END startEthReceive */
@@ -546,11 +548,14 @@ void startEthStream(void const * argument)
 		xSemaphoreTake(mxSPI1Handle, SPI1_TIMEOUT);
 		udp_send(data_readouts, 8);
 		xSemaphoreGive(mxSPI1Handle);
-		sprintf(message, "UDP Packet:\n\r\t0x%02x\t0x%02x\t0x%02x\t0x%02x\n\r\t0x%02x\t0x%02x\t0x%02x\t0x%02x\n\r",
+		sprintf(mes_udp, "UDP Packet:\n\r\t0x%02x\t0x%02x\t0x%02x\t0x%02x\n\r\t0x%02x\t0x%02x\t0x%02x\t0x%02x\n\r",
 				data_readouts[0], data_readouts[1], data_readouts[2], data_readouts[3],
 				data_readouts[4], data_readouts[5], data_readouts[6], data_readouts[7]);
 		xSemaphoreGive(mxSensorDataHandle);
-		uart_send(message);
+
+		xSemaphoreTake( mxUartHandle, UART_TIMEOUT );
+		uart_send(mes_udp);
+		xSemaphoreGive( mxUartHandle );
 		osDelay(100 * downstream_interval);
 	}
   /* USER CODE END startEthStream */
@@ -648,6 +653,7 @@ void startReadSensors(void const * argument)
 		data_readouts[7] = wRaichu >> 8;
 		xSemaphoreGive( mxSensorDataHandle );
 
+		//xSemaphoreTake( mxUartHandle, UART_TIMEOUT);
 		strcpy( message, "" );
 		sprintf( message,
 				"tick=%d\t%d\t%d\t%d\t%d\t%d\n\r"
@@ -666,6 +672,7 @@ void startReadSensors(void const * argument)
 				wIMUTemp
 				);
 		uart_send( message );
+		//xSemaphoreGive( mxUartHandle);
 		osDelay( 10 * data_readout_interval );
 	}
   /* USER CODE END startReadSensors */

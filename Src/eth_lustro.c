@@ -17,6 +17,7 @@ uint16_t port = 43879;
 uint8_t counter = 0x00;
 
 char message[MES_BUF_SIZE];
+char mes_udp[MES_BUF_SIZE];
 uint8_t udp_buffer[UDP_BUF_SIZE];
 uint8_t received[REC_BUF_SIZE];
 uint16_t received_size = 0;
