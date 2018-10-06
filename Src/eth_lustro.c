@@ -1,10 +1,13 @@
 #include "eth_lustro.h"
 #include "lustro_config.h"
+#include "transducers.h"
 #include <string.h>
 
+// command for the reset of ARM core
 extern void NVIC_SystemReset();
 
-uint8_t remoteMAC[] = { 0x90, 0x48, 0x9a, 0xb8, 0x7a, 0x8d };
+//uint8_t remoteMAC[] = { 0x90, 0x48, 0x9a, 0xb8, 0x7a, 0x8d };
+uint8_t remoteMAC[] = { 0x6C, 0xC2, 0x17, 0xE8, 0x23, 0xDE };
 uint8_t remoteip[] = { 192, 168, 1, 136 };
 uint16_t port2 = 43;
 uint8_t MAC[] = { 0x20, 0x37, 0x09, 0x11, 0x42, 0x89 };
@@ -18,6 +21,7 @@ uint8_t udp_buffer[UDP_BUF_SIZE];
 uint8_t received[REC_BUF_SIZE];
 uint16_t received_size = 0;
 
+// random packet for debugging
 uint8_t packet[] = {
 		  0xff, 0xfe, 0xfd, 0xfc, 0xfb, 0xfa, 0xff, 0xff, 0x55, 0x65, 0x78,
 		  0xff, 0xfe, 0xfd, 0xfc, 0xfb, 0xfa, 0xff, 0xff, 0x55, 0x65, 0x78,
@@ -25,6 +29,7 @@ uint8_t packet[] = {
 		  0xff, 0xfe, 0xfd, 0xfc, 0xfb, 0xfa, 0xff, 0xff, 0x55, 0x65, 0x78
 };
 
+// send MAC through UART
 void display_mac() {
 //	counter++;
 	uint8_t mac_read[6];
@@ -37,6 +42,7 @@ void display_mac() {
 	sprintf(message, "hello, i'm %02x:%02x:%02x:%02x:%02x:%02x\n\r", mac_read[0], mac_read[1], mac_read[2], mac_read[3], mac_read[4], mac_read[5]);
 	uart_send(message);
 }
+// send random packet (for debugging)
 void send_random_packet() {
 	uint16_t len = 500;
 	uint8_t packet[500];
@@ -60,6 +66,7 @@ void display_received_packet(uint16_t size, uint8_t* packet) {
 	uart_send("\n\r \n\r");
 }
 
+// flags for TCP packet recognition
 const uint8_t FLAG_CWR = 128;
 const uint8_t FLAG_ECE = 64;
 const uint8_t FLAG_URG = 32;
@@ -69,22 +76,22 @@ const uint8_t FLAG_RST = 4;
 const uint8_t FLAG_SYN = 2;
 const uint8_t FLAG_FIN = 1;
 
-uint8_t is_tcp_syn(uint8_t* packet) {
+uint8_t is_tcp_syn(uint8_t* packet) { // does someone try to connect?
 	return packet[47] & FLAG_SYN;
 }
-uint8_t is_tcp_synack(uint8_t* packet) {
+uint8_t is_tcp_synack(uint8_t* packet) { // does someone acknowledge our query for connection?
 	return (packet[47] & FLAG_SYN) && (packet[47] & FLAG_ACK);
 }
-uint8_t is_tcp_ack(uint8_t* packet) {
+uint8_t is_tcp_ack(uint8_t* packet) { // does someone acknowledged a packet?
 	return packet[47] & FLAG_ACK;
 }
-uint8_t is_tcp_fin(uint8_t* packet) {
+uint8_t is_tcp_fin(uint8_t* packet) { // does remote host want to finish connection?
 	return packet[47] & FLAG_FIN;
 }
-uint8_t is_tcp_psh(uint8_t* packet) {
+uint8_t is_tcp_psh(uint8_t* packet) { // push data to the application for further analysis of the packet?
 	return packet[47] & FLAG_PSH;
 }
-uint8_t is_tcp_pshack(uint8_t* packet) { // tcp keep-alive
+uint8_t is_tcp_pshack(uint8_t* packet) { // push data, acknowledged
 	return (packet[47] & FLAG_PSH) && (packet[47] & FLAG_ACK);
 }
 uint8_t is_tcp_finack(uint8_t* packet) { // end transmission request
@@ -93,14 +100,14 @@ uint8_t is_tcp_finack(uint8_t* packet) { // end transmission request
 uint8_t is_tcp_finpshack(uint8_t* packet) { // end transmission request
 	return (packet[47] & FLAG_FIN) && (packet[47] & FLAG_PSH) && (packet[47] & FLAG_ACK);
 }
-uint8_t is_tcp_rst(uint8_t* packet) {
+uint8_t is_tcp_rst(uint8_t* packet) { // errror in connection
 	return (packet[47] & FLAG_RST);
 }
-uint8_t tcp_fin_handler(uint8_t* packet) {
+uint8_t tcp_fin_handler(uint8_t* packet) { // end connection
 	make_tcp_ack_from_any(packet, 0, 0);
 	return 1;
 }
-uint8_t eth_pktrecv_valid() {
+uint8_t eth_pktrecv_valid() { // check is there is new packet
 	static uint16_t prev_reg_value;
 	uint16_t reg_value = enc28j60Read( EPKTCNT );
 	if (reg_value == prev_reg_value)
@@ -108,21 +115,82 @@ uint8_t eth_pktrecv_valid() {
 	prev_reg_value = reg_value;
 	return 1;
 }
-uint8_t tcp_packet_id_valid(uint16_t packetid) {
+uint8_t tcp_packet_id_valid(uint16_t packetid) { // check received packet id
 	static uint16_t prev_id;
-	//TODO: validate id here
 	prev_id = packetid;
 	return 0;
 }
 
-uint8_t command_handler(uint8_t command, uint8_t arg1, uint8_t arg2) {
+uint8_t command_handler(uint8_t command, uint8_t arg1, uint8_t arg2) { // control experiment accordingly to the command
+	uint16_t reg;
 	switch (command) {
+
+	/*
+#define SLN 					0x0d // go to silent mode
+#define QSLN					0x0e // go to standby mode
+#define GSCAN					0x0f // go to scanning mode
+#define GMAN					0x10 // go to manual mode
+#define DSEN					0x11 // downstream enable
+#define DSDIS					0x12 // downstream disable
+
+#define ADC_PGA					0x13 // set PGA value for ADC
+#define ADC_DTR					0x14 // set datarate for ADC
+	 *
+	 */
+	case QSLN:
+		_SILENCE = 0;
+		uart_send("GOING STANDBY\n\r");
+		return 1;
+
+	case SLN:
+		_SILENCE = 1;
+		uart_send("GOING SILENT\n\r");
+		return 1;
+
+	case GSCAN:
+		uart_send("going scanning\n\r");
+		return 1;
+
+	case GMAN:
+		uart_send("going manual\n\r");
+		return 1;
+
+	case DSEN:
+		downstream_enable = 1;
+		uart_send("downstream enabled\n\r");
+		return 1;
+
+	case DSDIS:
+		downstream_enable = 0;
+		uart_send("downstream disabled\n\r");
+		return 1;
+
+	case ADC_PGA:
+		reg = DTR;
+		if(arg2 > 6)
+			arg2 = 0x06;
+		setPGA(arg2, &reg);
+		switch(arg1) {
+		case 0:
+			saveConfigADC( &hi2c1, aAbra, reg );
+			break;
+		case 1:
+			saveConfigADC( &hi2c1, aKadabra, reg );
+			break;
+		case 2:
+			saveConfigADC( &hi2c1, aRaichu, reg );
+			break;
+		case 3:
+			saveConfigADC( &hi2c1, aDiglett, reg );
+			break;
+		}
+		return 1;
 
 	case SET_SPEED:
 		motor_speed = arg1;
-		sprintf(message, "motors' speed set to %d\n\r");
+		sprintf(message, "motors' speed set to %d\n\r", arg1);
 		uart_send(message);
-		return SET_SPEED;
+		return 1;
 
 	case DOWNSTREAM:
 		if (arg1 == 0) {
@@ -170,12 +238,16 @@ uint8_t command_handler(uint8_t command, uint8_t arg1, uint8_t arg2) {
 		uart_send("reset!\n\r");
 		NVIC_SystemReset();
 		return 0;
+
+	case 0x66: // GS listener connected
+		uart_send("GS listener connected\n\r");
+		isGSconnected = 1;
+		return 0x66;
 	}
 	uart_send( "command unknown\n\r" );
 	return 0;
 }
 
-// TODO: check for defines or add own defines for TCP packet types
 // returnVal recPacketType
 // 1 ARP
 // 2 Ping
@@ -184,18 +256,21 @@ uint8_t command_handler(uint8_t command, uint8_t arg1, uint8_t arg2) {
 // 5 PSH-ACK -> keep alive
 // 6 ACK
 // 0 eth packet not for us
-uint8_t eth_packet_handler(uint8_t* received, uint16_t received_size) {
+uint8_t eth_packet_handler(uint8_t* received, uint16_t received_size) { // handle packets; send responses, send command to command_handler
 	static uint16_t next_expected_id = 0;
 	static uint16_t prev_id = 0;
 	uint16_t packet_id = received[18] << 8 | received[19];
 	uint16_t received_len = 0;
 	// ARP reply (IP and MAC resolution)
+	uart_send("packet recvd\n\r");
 	if ( eth_type_is_arp_and_my_ip(received, received_size) ) {
+		uart_send("ARP received\n\r");
 		make_arp_answer_from_request( received );
 		return 1;
 	}
 	// ping reply
 	if ( received[IP_PROTO_P] == IP_PROTO_ICMP_V && received[ICMP_TYPE_P] == ICMP_TYPE_ECHOREQUEST_V ) {
+		if(_SILENCE) return 0;
 		make_echo_reply_from_request(received, received_size);
 		return 2;
 	}
@@ -252,11 +327,11 @@ uint8_t eth_packet_handler(uint8_t* received, uint16_t received_size) {
 	return 10;
 }
 
-uint16_t eth_pktid(uint8_t* packet) {
+uint16_t eth_pktid(uint8_t* packet) { // return packet id
 	return (packet[TCP_ID_P_H] << 8) | packet[TCP_ID_P_L];
 }
 
-uint8_t udp_send(uint8_t* packet, uint16_t length) {
+uint8_t udp_send(uint8_t* packet, uint16_t length) { // send packet to remote host
 	for (uint8_t i = 0; i < length; i++) {
 		if ( UDP_DATA_P + i >= UDP_BUF_SIZE ) {
 			ES_send_udp_data2(udp_buffer, remoteMAC, UDP_BUF_SIZE - UDP_DATA_P, port, remoteip, port2);

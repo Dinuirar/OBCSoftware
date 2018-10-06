@@ -59,12 +59,30 @@
 
 /* Private define ------------------------------------------------------------*/
 
-#define ETH_CS_Pin GPIO_PIN_8
-#define ETH_CS_GPIO_Port GPIOA
-#define RTC_CS_Pin GPIO_PIN_9
-#define RTC_CS_GPIO_Port GPIOA
-#define HTP_CS_Pin GPIO_PIN_10
-#define HTP_CS_GPIO_Port GPIOA
+#define CS_HTP_Pin GPIO_PIN_13
+#define CS_HTP_GPIO_Port GPIOC
+#define M11_Pin GPIO_PIN_1
+#define M11_GPIO_Port GPIOD
+#define CHC_1L_Pin GPIO_PIN_0
+#define CHC_1L_GPIO_Port GPIOA
+#define IND1_Pin GPIO_PIN_6
+#define IND1_GPIO_Port GPIOC
+#define IND2_Pin GPIO_PIN_7
+#define IND2_GPIO_Port GPIOC
+#define CS_HTP2_Pin GPIO_PIN_8
+#define CS_HTP2_GPIO_Port GPIOC
+#define CS_RTC_Pin GPIO_PIN_9
+#define CS_RTC_GPIO_Port GPIOC
+#define ONE_WIRE_Pin GPIO_PIN_10
+#define ONE_WIRE_GPIO_Port GPIOA
+#define CS_SD_Pin GPIO_PIN_10
+#define CS_SD_GPIO_Port GPIOC
+#define ETH_CS_Pin GPIO_PIN_11
+#define ETH_CS_GPIO_Port GPIOC
+#define CS_IMU_Pin GPIO_PIN_12
+#define CS_IMU_GPIO_Port GPIOC
+#define M12_Pin GPIO_PIN_2
+#define M12_GPIO_Port GPIOD
 
 /* ########################## Assert Selection ############################## */
 /**

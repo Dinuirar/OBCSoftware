@@ -56,7 +56,9 @@
 #include "eth_lustro.h"
 #include "lustro_config.h"
 #include "transducers.h"
+//#include "ds18b20/ds18b20.h"
 #include <string.h>
+//#include "ds18b20/ds18b20.h"
 /* USER CODE END Includes */
 
 /* Private variables ---------------------------------------------------------*/
@@ -71,11 +73,18 @@ osThreadId defaultTaskHandle;
 osThreadId vEthReceiveHandle;
 osThreadId vEthStreamHandle;
 osThreadId vReadSensorsHandle;
+osThreadId vControlMotorHandle;
 osTimerId encTimerHandle;
+osMutexId mxSensorDataHandle;
+osMutexId mxUartHandle;
+osMutexId mxSPI1Handle;
+osMutexId mxSPI2Handle;
+osMutexId mxMotorHandle;
 
 /* USER CODE BEGIN PV */
 /* Private variables ---------------------------------------------------------*/
-
+double temp = 0;
+int no = 0;
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -85,10 +94,11 @@ static void MX_I2C1_Init(void);
 static void MX_SPI1_Init(void);
 static void MX_SPI2_Init(void);
 static void MX_USART2_UART_Init(void);
-void StartDefaultTask(void const * argument);
+void startDefaultTask(void const * argument);
 void startEthReceive(void const * argument);
 void startEthStream(void const * argument);
 void startReadSensors(void const * argument);
+void startControlMotor(void const * argument);
 void encCallback(void const * argument);
 
 /* USER CODE BEGIN PFP */
@@ -112,6 +122,7 @@ int main(void)
   /* USER CODE END 1 */
 
   /* MCU Configuration----------------------------------------------------------*/
+
   /* Reset of all peripherals, Initializes the Flash interface and the Systick. */
   HAL_Init();
 
@@ -139,8 +150,47 @@ int main(void)
 	//  HAL_GPIO_WritePin(ETH_RES_GPIO_Port, ETH_RES_Pin, GPIO_PIN_SET);
 	enc28j60PhyWrite(PHLCON, 0x476);
 	enc28j60clkout(2);
+	uart_send("initiated\n\r");
+
+	motor_enable = 1;
+	motor_enabled = 1;
+
+	//ds18b20_init();
+
+//	enableMotorRight();
+//	HAL_Delay(1000);
+//	disableMotor();
+//	HAL_Delay(100);
+//	enableMotorLeft();
+//	HAL_Delay(1000);
+//	disableMotor();
+//	HAL_Delay(100);
+
+//	HAL_GPIO_WritePin(M11_GPIO_PORT, M11_Pin, GPIO_PIN_SET);
+	//HAL_GPIO_WritePin( )
 
   /* USER CODE END 2 */
+
+  /* Create the mutex(es) */
+  /* definition and creation of mxSensorData */
+  osMutexDef(mxSensorData);
+  mxSensorDataHandle = osMutexCreate(osMutex(mxSensorData));
+
+  /* definition and creation of mxUart */
+  osMutexDef(mxUart);
+  mxUartHandle = osMutexCreate(osMutex(mxUart));
+
+  /* definition and creation of mxSPI1 */
+  osMutexDef(mxSPI1);
+  mxSPI1Handle = osMutexCreate(osMutex(mxSPI1));
+
+  /* definition and creation of mxSPI2 */
+  osMutexDef(mxSPI2);
+  mxSPI2Handle = osMutexCreate(osMutex(mxSPI2));
+
+  /* definition and creation of mxMotor */
+  osMutexDef(mxMotor);
+  mxMotorHandle = osMutexCreate(osMutex(mxMotor));
 
   /* USER CODE BEGIN RTOS_MUTEX */
 	/* add mutexes, ... */
@@ -161,7 +211,7 @@ int main(void)
 
   /* Create the thread(s) */
   /* definition and creation of defaultTask */
-  osThreadDef(defaultTask, StartDefaultTask, osPriorityNormal, 0, 128);
+  osThreadDef(defaultTask, startDefaultTask, osPriorityNormal, 0, 128);
   defaultTaskHandle = osThreadCreate(osThread(defaultTask), NULL);
 
   /* definition and creation of vEthReceive */
@@ -175,6 +225,10 @@ int main(void)
   /* definition and creation of vReadSensors */
   osThreadDef(vReadSensors, startReadSensors, osPriorityAboveNormal, 0, 128);
   vReadSensorsHandle = osThreadCreate(osThread(vReadSensors), NULL);
+
+  /* definition and creation of vControlMotor */
+  osThreadDef(vControlMotor, startControlMotor, osPriorityRealtime, 0, 128);
+  vControlMotorHandle = osThreadCreate(osThread(vControlMotor), NULL);
 
   /* USER CODE BEGIN RTOS_THREADS */
 	/* add threads, ... */
@@ -307,7 +361,7 @@ static void MX_SPI2_Init(void)
   hspi2.Init.CLKPolarity = SPI_POLARITY_LOW;
   hspi2.Init.CLKPhase = SPI_PHASE_1EDGE;
   hspi2.Init.NSS = SPI_NSS_SOFT;
-  hspi2.Init.BaudRatePrescaler = SPI_BAUDRATEPRESCALER_2;
+  hspi2.Init.BaudRatePrescaler = SPI_BAUDRATEPRESCALER_16;
   hspi2.Init.FirstBit = SPI_FIRSTBIT_MSB;
   hspi2.Init.TIMode = SPI_TIMODE_DISABLE;
   hspi2.Init.CRCCalculation = SPI_CRCCALCULATION_DISABLE;
@@ -351,18 +405,64 @@ static void MX_GPIO_Init(void)
   GPIO_InitTypeDef GPIO_InitStruct;
 
   /* GPIO Ports Clock Enable */
+  __HAL_RCC_GPIOC_CLK_ENABLE();
+  __HAL_RCC_GPIOD_CLK_ENABLE();
   __HAL_RCC_GPIOA_CLK_ENABLE();
   __HAL_RCC_GPIOB_CLK_ENABLE();
 
   /*Configure GPIO pin Output Level */
-  HAL_GPIO_WritePin(GPIOA, ETH_CS_Pin|RTC_CS_Pin|HTP_CS_Pin, GPIO_PIN_RESET);
+  HAL_GPIO_WritePin(GPIOC, CS_HTP_Pin|CS_HTP2_Pin|CS_RTC_Pin|CS_SD_Pin 
+                          |ETH_CS_Pin|CS_IMU_Pin, GPIO_PIN_RESET);
 
-  /*Configure GPIO pins : ETH_CS_Pin RTC_CS_Pin HTP_CS_Pin */
-  GPIO_InitStruct.Pin = ETH_CS_Pin|RTC_CS_Pin|HTP_CS_Pin;
+  /*Configure GPIO pin Output Level */
+  HAL_GPIO_WritePin(GPIOD, M11_Pin|M12_Pin, GPIO_PIN_RESET);
+
+  /*Configure GPIO pin Output Level */
+  HAL_GPIO_WritePin(ONE_WIRE_GPIO_Port, ONE_WIRE_Pin, GPIO_PIN_RESET);
+
+  /*Configure GPIO pins : CS_HTP_Pin CS_HTP2_Pin CS_RTC_Pin CS_SD_Pin 
+                           ETH_CS_Pin CS_IMU_Pin */
+  GPIO_InitStruct.Pin = CS_HTP_Pin|CS_HTP2_Pin|CS_RTC_Pin|CS_SD_Pin 
+                          |ETH_CS_Pin|CS_IMU_Pin;
   GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
-  HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
+  HAL_GPIO_Init(GPIOC, &GPIO_InitStruct);
+
+  /*Configure GPIO pins : M11_Pin M12_Pin */
+  GPIO_InitStruct.Pin = M11_Pin|M12_Pin;
+  GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
+  GPIO_InitStruct.Pull = GPIO_NOPULL;
+  GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
+  HAL_GPIO_Init(GPIOD, &GPIO_InitStruct);
+
+  /*Configure GPIO pin : CHC_1L_Pin */
+  GPIO_InitStruct.Pin = CHC_1L_Pin;
+  GPIO_InitStruct.Mode = GPIO_MODE_INPUT;
+  GPIO_InitStruct.Pull = GPIO_NOPULL;
+  HAL_GPIO_Init(CHC_1L_GPIO_Port, &GPIO_InitStruct);
+
+  /*Configure GPIO pins : IND1_Pin IND2_Pin */
+  GPIO_InitStruct.Pin = IND1_Pin|IND2_Pin;
+  GPIO_InitStruct.Mode = GPIO_MODE_INPUT;
+  GPIO_InitStruct.Pull = GPIO_PULLDOWN;
+  HAL_GPIO_Init(GPIOC, &GPIO_InitStruct);
+
+  /*Configure GPIO pin : ONE_WIRE_Pin */
+  GPIO_InitStruct.Pin = ONE_WIRE_Pin;
+  GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
+  GPIO_InitStruct.Pull = GPIO_NOPULL;
+  GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
+  HAL_GPIO_Init(ONE_WIRE_GPIO_Port, &GPIO_InitStruct);
+
+  /*Configure GPIO pins : PB8 PB9 */
+  GPIO_InitStruct.Pin = GPIO_PIN_8|GPIO_PIN_9;
+  GPIO_InitStruct.Mode = GPIO_MODE_INPUT;
+  GPIO_InitStruct.Pull = GPIO_NOPULL;
+  HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);
+
+  /*Configure peripheral I/O remapping */
+  __HAL_AFIO_REMAP_PD01_ENABLE();
 
 }
 
@@ -370,8 +470,8 @@ static void MX_GPIO_Init(void)
 
 /* USER CODE END 4 */
 
-/* StartDefaultTask function */
-void StartDefaultTask(void const * argument)
+/* startDefaultTask function */
+void startDefaultTask(void const * argument)
 {
 
   /* USER CODE BEGIN 5 */
@@ -387,7 +487,6 @@ void startEthReceive(void const * argument)
 {
   /* USER CODE BEGIN startEthReceive */
 	/* Infinite loop */
-	uint16_t packet_id = 0;
 	uint8_t flag = 10;
 	for(;;) {
 		if ( !eth_pktrecv_valid() ) {
@@ -396,8 +495,9 @@ void startEthReceive(void const * argument)
 		}
 		received_size = enc28j60PacketReceive(REC_BUF_SIZE, received);
 
-		packet_id = eth_pktid( received );
 		flag = eth_packet_handler(received, received_size);
+		if (_SILENCE)
+			continue;
 		if (flag == 0)
 			uart_send("not for us\n\r");
 		else if ( flag == 1 )
@@ -430,7 +530,7 @@ void startEthStream(void const * argument)
 			continue;
 		}
 		udp_send(data_readouts, 8);
-		sprintf(message, "UDP packet:\n\r\t0x%02x\t0x%02x\t0x%02x\t0x%02x\n\r\t0x%02x\t0x%02x\t0x%02x\t0x%02x\n\r",
+		sprintf(message, "UDP Packet:\n\r\t0x%02x\t0x%02x\t0x%02x\t0x%02x\n\r\t0x%02x\t0x%02x\t0x%02x\t0x%02x\n\r",
 				data_readouts[0], data_readouts[1], data_readouts[2], data_readouts[3],
 				data_readouts[4], data_readouts[5], data_readouts[6], data_readouts[7]);
 		uart_send(message);
@@ -451,35 +551,90 @@ void startReadSensors(void const * argument)
 	saveConfigADC( &hi2c1, aDiglett, configuration );
 	saveConfigADC( &hi2c1, aAbra, configuration );
 	saveConfigADC( &hi2c1, aKadabra, configuration );
-	uint16_t wDiglett = 0, wAbra = 0 , wKadabra = 0;
+	saveConfigADC( &hi2c1, aRaichu, configuration );
+
+	uint16_t wDiglett = 0, wAbra = 0 , wKadabra = 0, wRaichu = 0;
+	uint16_t wIMUGyroX = 0, wIMUGyroY = 0, wIMUGyroZ = 0;
+	uint16_t wIMUAccX = 0, wIMUAccY = 0, wIMUAccZ = 0;
+	uint16_t wIMUMagX = 0, wIMUMagY = 0, wIMUMagZ = 0;
+	uint16_t wIMUTemp = 0;
+	uint16_t wRTC = 0;
+	uint16_t wHumidity1 = 0, wTemperature1 = 0, wPressure1 = 0;
+	uint16_t wHumidity2 = 0, wTemperature2 = 0, wPressure2 = 0;
+
 	uint16_t counter = 0;
-	/* RTC begin*/
-//	unsigned char timedat[8] = {0};
-//	unsigned char timebuf[16] = {0};
-//	DS1302_Init();
-	/* RTC end*/
+	int temp_int = 0;
 	for(;;) {
+		//read_temp( temp , no );
+		//temp_int = ds18b20_read_temp();
+		if ( temp > MAX_MOT_TEMP ) {
+			motor_enable = 0;
+			//NVIC_SystemReset();
+		}
+
+		/*
+  GPIO_InitStruct.Pin = IND1_Pin|IND2_Pin;
+  GPIO_InitStruct.Mode = GPIO_MODE_INPUT;
+  GPIO_InitStruct.Pull = GPIO_PULLDOWN;
+  HAL_GPIO_Init(GPIOC, &GPIO_InitStruct);
+		 */
+		if ( HAL_GPIO_ReadPin(GPIOC, IND2_Pin) == GPIO_PIN_SET ) { // IND2
+			motor_enable = 0;
+			HAL_Delay(10);
+		}
+
+		if( motor_enable && !motor_enabled ) {
+			enableMotorRight();
+			motor_enabled = 1;
+		}
+		else if ( !motor_enable && motor_enabled) {
+			disableMotor();
+			motor_enabled = 0;
+		}
+
 		wDiglett = readADC(aDiglett);
 		wAbra = readADC(aAbra);
 		wKadabra = readADC(aKadabra);
+		wRaichu = readADC(aRaichu);
 		data_readouts[0] = wDiglett;
 		data_readouts[1] = wDiglett >> 8;
 		data_readouts[2] = wAbra;
 		data_readouts[3] = wAbra >> 8;
 		data_readouts[4] = wKadabra;
 		data_readouts[5] = wKadabra >> 8;
+		data_readouts[6] = wRaichu;
+		data_readouts[7] = wRaichu >> 8;
 		strcpy( message, "" );
-		sprintf( message, "sensors: %d\t%d\t%d\t%d\n\r", counter++, wDiglett, wAbra, wKadabra );
+		sprintf( message,
+				"read no.\t%d\t%d\t%d\t%d\t%d\n\r"
+				"IMU:\t\t%d\t%d\t%d\t%d\t%d\t%d\t%d\t%d\t%d\t%d\n\r"
+				"HTP1:\t\t%d\t%d\t%d\n\r"
+				"HTP2:\t\t%d\t%d\t%d\n\r"
+				"RTC:\t\t%d\n\r"
+				"temp:\t\t%d\n\r\n\r",
+				counter++, wDiglett, wAbra, wKadabra, wRaichu,
+				wIMUAccX, wIMUAccY, wIMUAccZ, wIMUMagX, wIMUMagY, wIMUMagZ, wIMUGyroX, wIMUGyroY, wIMUGyroZ,
+				wHumidity1, wTemperature1, wPressure1,
+				wHumidity2, wTemperature2, wPressure2,
+				wRTC,
+				temp_int
+				);
 		uart_send( message );
 		osDelay( 100 * data_readout_interval );
-		/* RTC begin*/
-//		DS1302_ReadTime(timedat);
-//		sprintf((char*)timebuf, "%02d:%02d:%02d\r\n", timedat[4], timedat[5], timedat[6]);
-//		uart_send( timebuf );
-		/* RTC end*/
-
 	}
   /* USER CODE END startReadSensors */
+}
+
+/* startControlMotor function */
+void startControlMotor(void const * argument)
+{
+  /* USER CODE BEGIN startControlMotor */
+  /* Infinite loop */
+  for(;;)
+  {
+    osDelay(1);
+  }
+  /* USER CODE END startControlMotor */
 }
 
 /* encCallback function */

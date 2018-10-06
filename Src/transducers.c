@@ -1,6 +1,6 @@
 #include "transducers.h"
 
-/////////////////////////////////////////////
+// configuration and helpers
 uint16_t 		config 	= 0x0000;
 const uint16_t 	write 	= 0x0001;
 const uint8_t 	zero 	= 0x0000;
@@ -14,12 +14,18 @@ uint16_t aKadabra 	= 0x0096; // SCL
 uint16_t aRaichu 	= 0x0092; // VDD
 uint16_t aDiglett 	= 0x0090; // GND
 
+uint8_t iAbra 		= 0;
+uint8_t iKadabra 	= 1;
+uint8_t iRaichu 	= 2;
+uint8_t iDiglett 	= 3;
+
 void saveConfigADC( I2C_HandleTypeDef* hi2c1, uint16_t address, uint16_t configuration ) {
 	uint8_t confA = 0x01;
 	uint8_t confB = configuration >> 8;
-	uint8_t confC = configuration & 0x00FF;
+	uint8_t confC = configuration & 0x00FF; // split config register
 	uint8_t i2c_write_config[] = { confA, confB, confC };
 	uint16_t conf_length = 3;
+	// transmit bytes to the ADC
 	HAL_I2C_Master_Transmit(hi2c1, address, i2c_write_config, conf_length, 0xFFFFFF); // set config register of adc
 	HAL_Delay(1);
     HAL_I2C_Master_Transmit(hi2c1, address, &zero, 1, 0xffffff);
@@ -77,4 +83,3 @@ uint16_t readADC(uint16_t address) {
 	output = (a << 8) | b;
 	return output;
 }
-/////////////////////////////////////////////
