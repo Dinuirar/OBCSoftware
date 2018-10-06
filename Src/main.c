@@ -56,6 +56,7 @@
 #include "eth_lustro.h"
 #include "lustro_config.h"
 #include "transducers.h"
+#include "data.h"
 //#include "ds18b20/ds18b20.h"
 #include <string.h>
 //#include "ds18b20/ds18b20.h"
@@ -80,11 +81,11 @@ osMutexId mxUartHandle;
 osMutexId mxSPI1Handle;
 osMutexId mxSPI2Handle;
 osMutexId mxMotorHandle;
+osMutexId mxSensorConfigHandle;
+osMutexId mxI2CHandle;
 
 /* USER CODE BEGIN PV */
 /* Private variables ---------------------------------------------------------*/
-double temp = 0;
-int no = 0;
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -154,6 +155,7 @@ int main(void)
 
 	motor_enable = 1;
 	motor_enabled = 1;
+	downstream_enable = 1;
 
 	//ds18b20_init();
 
@@ -191,6 +193,14 @@ int main(void)
   /* definition and creation of mxMotor */
   osMutexDef(mxMotor);
   mxMotorHandle = osMutexCreate(osMutex(mxMotor));
+
+  /* definition and creation of mxSensorConfig */
+  osMutexDef(mxSensorConfig);
+  mxSensorConfigHandle = osMutexCreate(osMutex(mxSensorConfig));
+
+  /* definition and creation of mxI2C */
+  osMutexDef(mxI2C);
+  mxI2CHandle = osMutexCreate(osMutex(mxI2C));
 
   /* USER CODE BEGIN RTOS_MUTEX */
 	/* add mutexes, ... */
@@ -489,13 +499,16 @@ void startEthReceive(void const * argument)
 	/* Infinite loop */
 	uint8_t flag = 10;
 	for(;;) {
+		xSemaphoreTake(mxSPI1Handle, SPI1_TIMEOUT);
 		if ( !eth_pktrecv_valid() ) {
+			xSemaphoreGive(mxSPI1Handle);
 			osDelay(1);
 			continue;
 		}
 		received_size = enc28j60PacketReceive(REC_BUF_SIZE, received);
-
 		flag = eth_packet_handler(received, received_size);
+		xSemaphoreGive(mxSPI1Handle);
+
 		if (_SILENCE)
 			continue;
 		if (flag == 0)
@@ -529,10 +542,14 @@ void startEthStream(void const * argument)
 			osDelay(1);
 			continue;
 		}
+		xSemaphoreTake(mxSensorDataHandle, DATA_TIMEOUT);
+		xSemaphoreTake(mxSPI1Handle, SPI1_TIMEOUT);
 		udp_send(data_readouts, 8);
+		xSemaphoreGive(mxSPI1Handle);
 		sprintf(message, "UDP Packet:\n\r\t0x%02x\t0x%02x\t0x%02x\t0x%02x\n\r\t0x%02x\t0x%02x\t0x%02x\t0x%02x\n\r",
 				data_readouts[0], data_readouts[1], data_readouts[2], data_readouts[3],
 				data_readouts[4], data_readouts[5], data_readouts[6], data_readouts[7]);
+		xSemaphoreGive(mxSensorDataHandle);
 		uart_send(message);
 		osDelay(100 * downstream_interval);
 	}
@@ -545,13 +562,19 @@ void startReadSensors(void const * argument)
   /* USER CODE BEGIN startReadSensors */
 	/* Infinite loop */
 
-	uptime = xTaskGetTickCount();
+	xSemaphoreTake(mxSensorConfigHandle, SENSORCONFIG_TIMEOUT);
+	configAbra = configADC(defaultAbraPGA, mode_continuous, defaultAbraDR);
+	configKadabra = configADC(defaultKadabraPGA, mode_continuous, defaultKadabraDR);
+	configRaichu = configADC(defaultRaichuPGA, mode_continuous, defaultRaichuDR);
+	configDiglett = configADC(defaultDiglettPGA, mode_continuous, defaultDiglettDR);
 
-	uint16_t configuration = configADC(7, mode_continuous, 0);
-	saveConfigADC( &hi2c1, aDiglett, configuration );
-	saveConfigADC( &hi2c1, aAbra, configuration );
-	saveConfigADC( &hi2c1, aKadabra, configuration );
-	saveConfigADC( &hi2c1, aRaichu, configuration );
+	xSemaphoreTake(mxI2CHandle, I2C_TIMEOUT);
+	saveConfigADC( &hi2c1, aDiglett, configDiglett );
+	saveConfigADC( &hi2c1, aAbra, configAbra );
+	saveConfigADC( &hi2c1, aKadabra, configKadabra );
+	saveConfigADC( &hi2c1, aRaichu, configRaichu );
+	xSemaphoreGive(mxI2CHandle);
+	xSemaphoreGive(mxSensorConfigHandle);
 
 	uint16_t wDiglett = 0, wAbra = 0 , wKadabra = 0, wRaichu = 0;
 	uint16_t wIMUGyroX = 0, wIMUGyroY = 0, wIMUGyroZ = 0;
@@ -565,37 +588,56 @@ void startReadSensors(void const * argument)
 	uint16_t counter = 0;
 	int temp_int = 0;
 	for(;;) {
-		//read_temp( temp , no );
-		//temp_int = ds18b20_read_temp();
-		if ( temp > MAX_MOT_TEMP ) {
-			motor_enable = 0;
-			//NVIC_SystemReset();
+//		//read_temp( temp , no );
+//		//temp_int = ds18b20_read_temp();
+//		if ( temp > MAX_MOT_TEMP ) {
+//			motor_enable = 0;
+//			//NVIC_SystemReset();
+//		}
+//
+//		/*
+//  GPIO_InitStruct.Pin = IND1_Pin|IND2_Pin;
+//  GPIO_InitStruct.Mode = GPIO_MODE_INPUT;
+//  GPIO_InitStruct.Pull = GPIO_PULLDOWN;
+//  HAL_GPIO_Init(GPIOC, &GPIO_InitStruct);
+//		 */
+//		if ( HAL_GPIO_ReadPin(GPIOC, IND2_Pin) == GPIO_PIN_SET ) { // IND2
+//			motor_enable = 0;
+//			HAL_Delay(10);
+//		}
+//
+//		if( motor_enable && !motor_enabled ) {
+//			enableMotorRight();
+//			motor_enabled = 1;
+//		}
+//		else if ( !motor_enable && motor_enabled) {
+//			disableMotor();
+//			motor_enabled = 0;
+//		}
+
+		uptime = xTaskGetTickCount();
+
+		if( write_new_conf_adc ) { // save new ADC configuration to sensors
+			xSemaphoreTake(mxSensorConfigHandle, SENSORCONFIG_TIMEOUT);
+			xSemaphoreTake(mxI2CHandle, I2C_TIMEOUT);
+			saveConfigADC( &hi2c1, aDiglett, configDiglett );
+			saveConfigADC( &hi2c1, aAbra, configAbra );
+			saveConfigADC( &hi2c1, aKadabra, configKadabra );
+			saveConfigADC( &hi2c1, aRaichu, configRaichu );
+			write_new_conf_adc = 0;
+			xSemaphoreGive(mxI2CHandle);
+			xSemaphoreGive(mxSensorConfigHandle);
 		}
 
-		/*
-  GPIO_InitStruct.Pin = IND1_Pin|IND2_Pin;
-  GPIO_InitStruct.Mode = GPIO_MODE_INPUT;
-  GPIO_InitStruct.Pull = GPIO_PULLDOWN;
-  HAL_GPIO_Init(GPIOC, &GPIO_InitStruct);
-		 */
-		if ( HAL_GPIO_ReadPin(GPIOC, IND2_Pin) == GPIO_PIN_SET ) { // IND2
-			motor_enable = 0;
-			HAL_Delay(10);
-		}
-
-		if( motor_enable && !motor_enabled ) {
-			enableMotorRight();
-			motor_enabled = 1;
-		}
-		else if ( !motor_enable && motor_enabled) {
-			disableMotor();
-			motor_enabled = 0;
-		}
-
+		xSemaphoreTake( mxI2CHandle, I2C_TIMEOUT);
 		wDiglett = readADC(aDiglett);
 		wAbra = readADC(aAbra);
 		wKadabra = readADC(aKadabra);
 		wRaichu = readADC(aRaichu);
+		xSemaphoreGive( mxI2CHandle );
+
+		xSemaphoreTake( mxSensorDataHandle, DATA_TIMEOUT );
+//		prepareData(wDiglett, wAbra, wKadabra, wRaichu, wIMUGyroX, wIMUGyroY, wIMUGyroZ, wIMUAccX, wIMUAccY, wIMUAccZ, wIMUMagX, wIMUMagY, wIMUMagZ, wIMUTemp, wRTC, wHumidity1, wTemperature1, wPRessure1, wHumidity2, wTemperature2, wPressure2, uptime);
 		data_readouts[0] = wDiglett;
 		data_readouts[1] = wDiglett >> 8;
 		data_readouts[2] = wAbra;
@@ -604,23 +646,27 @@ void startReadSensors(void const * argument)
 		data_readouts[5] = wKadabra >> 8;
 		data_readouts[6] = wRaichu;
 		data_readouts[7] = wRaichu >> 8;
+		xSemaphoreGive( mxSensorDataHandle );
+
 		strcpy( message, "" );
 		sprintf( message,
-				"read no.\t%d\t%d\t%d\t%d\t%d\n\r"
+				"tick=%d\t%d\t%d\t%d\t%d\t%d\n\r"
 				"IMU:\t\t%d\t%d\t%d\t%d\t%d\t%d\t%d\t%d\t%d\t%d\n\r"
 				"HTP1:\t\t%d\t%d\t%d\n\r"
 				"HTP2:\t\t%d\t%d\t%d\n\r"
 				"RTC:\t\t%d\n\r"
-				"temp:\t\t%d\n\r\n\r",
-				counter++, wDiglett, wAbra, wKadabra, wRaichu,
+				"temp:\t\t%d\n\r"
+				"tempIMU:\t%d\n\r\n\r",
+				uptime, counter++, wDiglett, wAbra, wKadabra, wRaichu,
 				wIMUAccX, wIMUAccY, wIMUAccZ, wIMUMagX, wIMUMagY, wIMUMagZ, wIMUGyroX, wIMUGyroY, wIMUGyroZ,
 				wHumidity1, wTemperature1, wPressure1,
 				wHumidity2, wTemperature2, wPressure2,
 				wRTC,
-				temp_int
+				temp_int,
+				wIMUTemp
 				);
 		uart_send( message );
-		osDelay( 100 * data_readout_interval );
+		osDelay( 10 * data_readout_interval );
 	}
   /* USER CODE END startReadSensors */
 }
@@ -630,9 +676,32 @@ void startControlMotor(void const * argument)
 {
   /* USER CODE BEGIN startControlMotor */
   /* Infinite loop */
-  for(;;)
-  {
-    osDelay(1);
+	for(;;) {
+		//read_temp( temp , no );
+		//temp_int = ds18b20_read_temp();
+		if ( temp > MAX_MOT_TEMP ) {
+			motor_enable = 0;
+			//NVIC_SystemReset();
+		}
+		/*
+		 * GPIO_InitStruct.Pin = IND1_Pin|IND2_Pin;
+		 * GPIO_InitStruct.Mode = GPIO_MODE_INPUT;
+		 * GPIO_InitStruct.Pull = GPIO_PULLDOWN;
+		 * HAL_GPIO_Init(GPIOC, &GPIO_InitStruct);
+		 */
+		if ( HAL_GPIO_ReadPin(GPIOC, IND2_Pin) == GPIO_PIN_SET ) { // IND2
+			motor_enable = 0;
+			HAL_Delay(10);
+		}
+		if( motor_enable && !motor_enabled ) {
+			enableMotorRight();
+			motor_enabled = 1;
+		}
+		else if ( !motor_enable && motor_enabled) {
+			disableMotor();
+			motor_enabled = 0;
+		}
+		osDelay(1);
   }
   /* USER CODE END startControlMotor */
 }

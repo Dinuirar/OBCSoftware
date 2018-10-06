@@ -14,9 +14,27 @@ uint8_t motor_enabled = 0;
 uint8_t obc_temp = 0;
 uint8_t reset_obc_flag = 0;
 uint8_t status = SCANNING;
-uint8_t downstream_enable = 1;
+uint8_t downstream_enable = 0;
 uint8_t downstream_minutes = 0;
 uint8_t downstream_interval = 10;
+double temp = 0;
+int no = 0;
+
+uint8_t write_new_conf_adc = 0;
+uint16_t configAbra 	= 0;
+uint16_t configKadabra 	= 0;
+uint16_t configRaichu 	= 0;
+uint16_t configDiglett 	= 0;
+
+uint8_t defaultAbraPGA = 7;
+uint8_t defaultKadabraPGA = 7;
+uint8_t defaultRaichuPGA = 7;
+uint8_t defaultDiglettPGA = 7;
+
+uint8_t defaultAbraDR = 0;
+uint8_t defaultKadabraDR = 0;
+uint8_t defaultRaichuDR = 0;
+uint8_t defaultDiglettDR = 0;
 
 uint8_t _SILENCE = 0;
 uint16_t DTR = 0x0000;
@@ -24,13 +42,7 @@ uint16_t DTR = 0x0000;
 uint16_t data_readout_interval = 1;
 uint16_t datastream_time = 10;
 
-uint8_t data_readouts[] = {
-		0, 0, 0, 0, 0, 0, 0, 0,
-		0, 0, 0, 0, 0, 0, 0, 0,
-		0, 0, 0, 0, 0, 0, 0, 0,
-		0, 0, 0, 0, 0, 0, 0, 0
-};
-uint32_t uptime = 1;
+uint32_t uptime = 0;
 
 // ground station connection indicator
 uint8_t isGSconnected = 0;

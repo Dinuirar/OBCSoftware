@@ -1,4 +1,5 @@
 #include "comm_lustro.h"
+#include "lustro_config.h"
 #include <string.h>
 
 extern uint8_t _SILENCE;

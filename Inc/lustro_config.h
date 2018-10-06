@@ -15,13 +15,13 @@
  *  @{
  */
 /// \brief Idle - stop motor, stop sensor reading, stop downstream
-#define IDLE 0
+#define IDLE 					0
 /// \brief Scanning - autonomous functioning with default parameter values
-#define SCANNING 1
+#define SCANNING 				1
 /// \brief Manual - manually adjustable parametres
-#define MANUAL 2
+#define MANUAL 					2
 
-#define MAX_MOT_TEMP 90 // 90 deg C
+#define MAX_MOT_TEMP 			90 // 90 deg C
 
 #define SET_SPEED 				0x01
 #define SEND_NTH 				0x02
@@ -47,6 +47,12 @@
 
 #define ADC_PGA					0x13 // set PGA value for ADC
 
+#define SPI1_TIMEOUT			100
+#define SPI2_TIMEOUT			100
+#define UART_TIMEOUT	 		100
+#define DATA_TIMEOUT			100
+#define I2C_TIMEOUT				100
+#define SENSORCONFIG_TIMEOUT 	100
 /*
  * HELP:
  * sudo_reset - reset the microcontroller
@@ -62,38 +68,41 @@
 
 extern uint8_t _SILENCE;
 extern uint16_t DTR;
-/// \brief Experiment control parametre
 extern uint8_t motor_speed;
-/// \brief Experiment control parametre
 extern uint8_t motor_enable;
-/// \brief Experiment control parametre
 extern uint8_t motor_enabled;
-/// \brief Experiment control parametre
 extern uint8_t stream_select;
-/// \brief Experiment control parametre
 extern uint8_t obc_temp;
-/// \brief Experiment control parametre
 extern uint8_t reset_obc_flag;
-/// \brief Experiment control parametre
 extern uint8_t status;
-/// \brief Experiment control parametre
 extern uint8_t downstream_enable;
-/// \brief Experiment control parametre
 extern uint8_t downstream_minutes;
-/// \brief Experiment control parametre
 extern uint8_t downstream_interval;
 
-/// \brief Experiment control parametre
 extern uint16_t data_readout_interval;
-/// \brief Experiment control parametre
 extern uint16_t datastream_time;
+extern uint8_t write_new_conf_adc;
 
-/// \brief Experiment control parametre
+extern uint16_t configAbra;
+extern uint16_t configKadabra;
+extern uint16_t configRaichu;
+extern uint16_t configDiglett;
+
+extern uint8_t defaultAbraPGA; // default ADC's PGA (programmable gain amplifier) gain
+extern uint8_t defaultKadabraPGA;
+extern uint8_t defaultRaichuPGA;
+extern uint8_t defaultDiglettPGA;
+
+extern uint8_t defaultAbraDR; // default ADC datarate (ADC conversion frequency)
+extern uint8_t defaultKadabraDR;
+extern uint8_t defaultRaichuDR;
+extern uint8_t defaultDiglettDR;
+
 extern uint8_t data_readouts[];
-/// \brief Experiment control parametre
 extern uint32_t uptime;
+extern double temp;
+extern int no;
 
-/// \brief Experiment control parametre
 extern uint8_t isGSconnected;
 /** @} */
 
