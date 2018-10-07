@@ -25,12 +25,10 @@
  *  @{
  */
 
-/// \brief I2C handle
 extern I2C_HandleTypeDef hi2c1;
-/// \brief SPI handle
 extern SPI_HandleTypeDef hspi1;
-/// \brief UART handle
 extern UART_HandleTypeDef huart2;
+extern uint8_t buf_uart[];
 
 /// \brief Send message through UART
 extern void uart_send(char* s);

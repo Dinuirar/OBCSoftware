@@ -148,7 +148,6 @@ int main(void)
 
 	ES_enc28j60Init(MAC);
 	ES_init_ip_arp_udp_tcp(MAC, ip, port);
-	//  HAL_GPIO_WritePin(ETH_RES_GPIO_Port, ETH_RES_Pin, GPIO_PIN_SET);
 	enc28j60PhyWrite(PHLCON, 0x476);
 	enc28j60clkout(2);
 	uart_send("initiated\n\r");
@@ -225,7 +224,7 @@ int main(void)
   defaultTaskHandle = osThreadCreate(osThread(defaultTask), NULL);
 
   /* definition and creation of vEthReceive */
-  osThreadDef(vEthReceive, startEthReceive, osPriorityBelowNormal, 0, 128);
+  osThreadDef(vEthReceive, startEthReceive, osPriorityNormal, 0, 128);
   vEthReceiveHandle = osThreadCreate(osThread(vEthReceive), NULL);
 
   /* definition and creation of vEthStream */
@@ -233,11 +232,11 @@ int main(void)
   vEthStreamHandle = osThreadCreate(osThread(vEthStream), NULL);
 
   /* definition and creation of vReadSensors */
-  osThreadDef(vReadSensors, startReadSensors, osPriorityAboveNormal, 0, 128);
+  osThreadDef(vReadSensors, startReadSensors, osPriorityNormal, 0, 128);
   vReadSensorsHandle = osThreadCreate(osThread(vReadSensors), NULL);
 
   /* definition and creation of vControlMotor */
-  osThreadDef(vControlMotor, startControlMotor, osPriorityRealtime, 0, 128);
+  osThreadDef(vControlMotor, startControlMotor, osPriorityNormal, 0, 128);
   vControlMotorHandle = osThreadCreate(osThread(vControlMotor), NULL);
 
   /* USER CODE BEGIN RTOS_THREADS */
@@ -481,20 +480,20 @@ static void MX_GPIO_Init(void)
 /* USER CODE END 4 */
 
 /* startDefaultTask function */
-void startDefaultTask(void const * argument)
-{
-
+void startDefaultTask(void const * argument) {
   /* USER CODE BEGIN 5 */
 	/* Infinite loop */
 	for(;;) {
+//		xSemaphoreTake(mxUartHandle, UART_TIMEOUT);
+//		uart_send("default\n\r");
+//		xSemaphoreGive(mxUartHandle);
 		osDelay(1);
 	}
   /* USER CODE END 5 */ 
 }
 
 /* startEthReceive function */
-void startEthReceive(void const * argument)
-{
+void startEthReceive(void const * argument) {
   /* USER CODE BEGIN startEthReceive */
 	/* Infinite loop */
 	uint8_t flag = 10;
@@ -509,9 +508,7 @@ void startEthReceive(void const * argument)
 		flag = eth_packet_handler(received, received_size);
 		xSemaphoreGive(mxSPI1Handle);
 
-		if (_SILENCE)
-			continue;
-//		xSemaphoreTake( mxUartHandle, UART_TIMEOUT);
+		xSemaphoreTake( mxUartHandle, UART_TIMEOUT);
 		if (flag == 0)
 			uart_send("not for us\n\r");
 		else if ( flag == 1 )
@@ -528,8 +525,8 @@ void startEthReceive(void const * argument)
 			uart_send("ACK received\n\r");
 		else
 			uart_send("flag unknown\n\r");
-//		xSemaphoreGive( mxUartHandle );
-		osDelay(10);
+		xSemaphoreGive( mxUartHandle );
+		osDelay(1);
 	}
   /* USER CODE END startEthReceive */
 }
@@ -557,6 +554,7 @@ void startEthStream(void const * argument)
 		uart_send(mes_udp);
 		xSemaphoreGive( mxUartHandle );
 		osDelay(100 * downstream_interval);
+//		osDelay(1);
 	}
   /* USER CODE END startEthStream */
 }
@@ -653,27 +651,27 @@ void startReadSensors(void const * argument)
 		data_readouts[7] = wRaichu >> 8;
 		xSemaphoreGive( mxSensorDataHandle );
 
-		//xSemaphoreTake( mxUartHandle, UART_TIMEOUT);
-		strcpy( message, "" );
-		sprintf( message,
+		xSemaphoreTake( mxUartHandle, UART_TIMEOUT);
+		strcpy( buf_uart, "" );
+		sprintf( buf_uart,
 				"tick=%d\t%d\t%d\t%d\t%d\t%d\n\r"
-				"IMU:\t\t%d\t%d\t%d\t%d\t%d\t%d\t%d\t%d\t%d\t%d\n\r"
-				"HTP1:\t\t%d\t%d\t%d\n\r"
-				"HTP2:\t\t%d\t%d\t%d\n\r"
-				"RTC:\t\t%d\n\r"
-				"temp:\t\t%d\n\r"
-				"tempIMU:\t%d\n\r\n\r",
+//				"IMU:\t\t%d\t%d\t%d\t%d\t%d\t%d\t%d\t%d\t%d\t%d\n\r"
+//				"HTP1:\t\t%d\t%d\t%d\n\r"
+//				"HTP2:\t\t%d\t%d\t%d\n\r"
+				"RTC:\t\t%d\n\r",
+//				"temp:\t\t%d\n\r"
+//				"tempIMU:\t%d\n\r\n\r",
 				uptime, counter++, wDiglett, wAbra, wKadabra, wRaichu,
-				wIMUAccX, wIMUAccY, wIMUAccZ, wIMUMagX, wIMUMagY, wIMUMagZ, wIMUGyroX, wIMUGyroY, wIMUGyroZ,
-				wHumidity1, wTemperature1, wPressure1,
-				wHumidity2, wTemperature2, wPressure2,
-				wRTC,
-				temp_int,
-				wIMUTemp
+//				wIMUAccX, wIMUAccY, wIMUAccZ, wIMUMagX, wIMUMagY, wIMUMagZ, wIMUGyroX, wIMUGyroY, wIMUGyroZ,
+//				wHumidity1, wTemperature1, wPressure1,
+//				wHumidity2, wTemperature2, wPressure2,
+				wRTC
+//				temp_int,
+//				wIMUTemp
 				);
-		uart_send( message );
-		//xSemaphoreGive( mxUartHandle);
-		osDelay( 10 * data_readout_interval );
+		uart_send( buf_uart );
+		xSemaphoreGive( mxUartHandle);
+		osDelay( 1 * data_readout_interval );
 	}
   /* USER CODE END startReadSensors */
 }
@@ -696,7 +694,7 @@ void startControlMotor(void const * argument)
 		 * GPIO_InitStruct.Pull = GPIO_PULLDOWN;
 		 * HAL_GPIO_Init(GPIOC, &GPIO_InitStruct);
 		 */
-		if ( HAL_GPIO_ReadPin(GPIOC, IND2_Pin) == GPIO_PIN_SET ) { // IND2
+		if ( HAL_GPIO_ReadPin(GPIOC, IND2_Pin) == GPIO_PIN_SET ) { // pin IND2 ustawiony jako alarm
 			motor_enable = 0;
 			HAL_Delay(10);
 		}

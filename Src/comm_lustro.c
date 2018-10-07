@@ -2,10 +2,9 @@
 #include "lustro_config.h"
 #include <string.h>
 
-extern uint8_t _SILENCE;
+uint8_t buf_uart[200] = {0};
 
 void uart_send(char* s) {
-	if(_SILENCE) return;
 	HAL_UART_Transmit(&huart2, (uint8_t*)s, strlen(s), 500);
 }
 void spi_send_byte(uint8_t* b) {

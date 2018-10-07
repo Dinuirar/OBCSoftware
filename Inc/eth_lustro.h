@@ -56,6 +56,7 @@ extern uint8_t counter;
 
 /// \brief Message-to-transmit buffer
 extern char message[];
+extern char mes_udp[];
 
 /// \brief Received-message buffer
 extern uint8_t received[];
