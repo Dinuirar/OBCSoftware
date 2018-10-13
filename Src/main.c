@@ -57,8 +57,6 @@
 #include "lustro_config.h"
 #include "transducers.h"
 #include "data.h"
-#include "diskio.h"
-#include "ff.h"
 //#include "ds18b20/ds18b20.h"
 #include <string.h>
 //#include "ds18b20/ds18b20.h"
@@ -155,7 +153,7 @@ int main(void)
 	uart_send("initiated\n\r");
 
 	motor_enable = 1;
-	motor_enabled = 1;
+	motor_enabled = 0;
 	downstream_enable = 1;
 
 	//ds18b20_init();
@@ -429,7 +427,7 @@ static void MX_GPIO_Init(void)
   HAL_GPIO_WritePin(GPIOD, M11_Pin|M12_Pin, GPIO_PIN_RESET);
 
   /*Configure GPIO pin Output Level */
-  HAL_GPIO_WritePin(ONE_WIRE_GPIO_Port, ONE_WIRE_Pin, GPIO_PIN_RESET);
+  HAL_GPIO_WritePin(GPIOA, LED_MOT_Pin|ONE_WIRE_Pin, GPIO_PIN_RESET);
 
   /*Configure GPIO pins : CS_HTP_Pin CS_HTP2_Pin CS_RTC_Pin CS_SD_Pin 
                            ETH_CS_Pin CS_IMU_Pin */
@@ -453,18 +451,18 @@ static void MX_GPIO_Init(void)
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   HAL_GPIO_Init(CHC_1L_GPIO_Port, &GPIO_InitStruct);
 
+  /*Configure GPIO pins : LED_MOT_Pin ONE_WIRE_Pin */
+  GPIO_InitStruct.Pin = LED_MOT_Pin|ONE_WIRE_Pin;
+  GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
+  GPIO_InitStruct.Pull = GPIO_NOPULL;
+  GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
+  HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
+
   /*Configure GPIO pins : IND1_Pin IND2_Pin */
   GPIO_InitStruct.Pin = IND1_Pin|IND2_Pin;
   GPIO_InitStruct.Mode = GPIO_MODE_INPUT;
   GPIO_InitStruct.Pull = GPIO_PULLDOWN;
   HAL_GPIO_Init(GPIOC, &GPIO_InitStruct);
-
-  /*Configure GPIO pin : ONE_WIRE_Pin */
-  GPIO_InitStruct.Pin = ONE_WIRE_Pin;
-  GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
-  GPIO_InitStruct.Pull = GPIO_NOPULL;
-  GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
-  HAL_GPIO_Init(ONE_WIRE_GPIO_Port, &GPIO_InitStruct);
 
   /*Configure GPIO pins : PB8 PB9 */
   GPIO_InitStruct.Pin = GPIO_PIN_8|GPIO_PIN_9;
@@ -482,7 +480,9 @@ static void MX_GPIO_Init(void)
 /* USER CODE END 4 */
 
 /* startDefaultTask function */
-void startDefaultTask(void const * argument) {
+void startDefaultTask(void const * argument)
+{
+
   /* USER CODE BEGIN 5 */
 	/* Infinite loop */
 	for(;;) {
@@ -495,7 +495,8 @@ void startDefaultTask(void const * argument) {
 }
 
 /* startEthReceive function */
-void startEthReceive(void const * argument) {
+void startEthReceive(void const * argument)
+{
   /* USER CODE BEGIN startEthReceive */
 	/* Infinite loop */
 	uint8_t flag = 10;
@@ -592,51 +593,6 @@ void startReadSensors(void const * argument)
 
 	uint16_t counter = 0;
 	int temp_int = 0;
-
-
-/* SC Card demo begin */
-	// CS obecnie skonfigurowany jest pozyczony od RTC, czyli GPIOA 9
-	// konfiguracja SPI:
-//	hspi1.Init.Mode = SPI_MODE_MASTER; //
-//	  hspi1.Init.Direction = SPI_DIRECTION_2LINES; //
-//	  hspi1.Init.DataSize = SPI_DATASIZE_8BIT; //
-//	  hspi1.Init.CLKPolarity = SPI_POLARITY_LOW; //
-//	  hspi1.Init.CLKPhase = SPI_PHASE_1EDGE; //
-//	  hspi1.Init.NSS = SPI_NSS_SOFT; //
-//	  hspi1.Init.BaudRatePrescaler = SPI_BAUDRATEPRESCALER_128; //
-//	  hspi1.Init.FirstBit = SPI_FIRSTBIT_MSB; //
-//	//  hspi1.Init.TIMode = SPI_TIMODE_DISABLE; // nie ma w pliku sd
-//	  hspi1.Init.CRCCalculation = SPI_CRCCALCULATION_DISABLE; // nie ma w pliku sd
-//	  hspi1.Init.CRCPolynomial = 7; //
-
-//	char buffer[128];
-//	static FATFS g_sFatFs;
-//	FRESULT fresult;
-//	FIL file;
-//	int len;
-//	UINT bytes_written=10;
-//	UINT bufsize=128;
-//
-//	//mount SD card
-//	fresult = f_mount(&g_sFatFs, "", 0);
-//
-//	for (int i=0; i<2; i++){
-//	//open file on SD card
-//	fresult = f_open(&file, "file.txt", FA_OPEN_ALWAYS | FA_WRITE);
-//	//go to the end of the file
-//	fresult = f_lseek(&file, file.fsize);
-//	//generate some string
-//	len = sprintf( buffer, "pierwsza linia, iteracja %d\r\n",i);
-//	//write data to the file
-//	fresult = f_write(&file, &buffer, bufsize, &bytes_written);
-//	len = sprintf( buffer, "druga linia, iteracja %d\r\n",i);
-//	fresult = f_write(&file, &buffer, bufsize, &bytes_written);
-//	//close file
-//	fresult = f_close(&file);
-//	}
-/* SD Card demo end*/
-
-
 	for(;;) {
 //		//read_temp( temp , no );
 //		//temp_int = ds18b20_read_temp();
@@ -731,10 +687,10 @@ void startControlMotor(void const * argument)
 	for(;;) {
 		//read_temp( temp , no );
 		//temp_int = ds18b20_read_temp();
-		if ( temp > MAX_MOT_TEMP ) {
-			motor_enable = 0;
-			//NVIC_SystemReset();
-		}
+//		if ( temp > MAX_MOT_TEMP ) {
+//			motor_enable = 0;
+//			//NVIC_SystemReset();
+//		}
 		/*
 		 * GPIO_InitStruct.Pin = IND1_Pin|IND2_Pin;
 		 * GPIO_InitStruct.Mode = GPIO_MODE_INPUT;

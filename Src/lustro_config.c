@@ -50,12 +50,12 @@ void enableMotorLeft() {
 	HAL_GPIO_WritePin(GPIOD, M12_Pin, GPIO_PIN_RESET);
 }
 void enableMotorRight() {
-//	HAL_GPIO_WritePin(); // turn indicator led ON
+	HAL_GPIO_WritePin(LED_MOT_GPIO_Port, LED_MOT_Pin, GPIO_PIN_SET); // turn indicator led ON
 	HAL_GPIO_WritePin(GPIOD, M11_Pin, GPIO_PIN_RESET);
 	HAL_GPIO_WritePin(GPIOD, M12_Pin, GPIO_PIN_SET);
 }
 void disableMotor() {
-//	HAL_GPIO_WritePin(); // turn indicator led OFF
+	HAL_GPIO_WritePin(LED_MOT_GPIO_Port, LED_MOT_Pin, GPIO_PIN_RESET); // turn indicator led OFF
 	HAL_GPIO_WritePin(GPIOD, M11_Pin, GPIO_PIN_RESET);
 	HAL_GPIO_WritePin(GPIOD, M12_Pin, GPIO_PIN_RESET);
 }

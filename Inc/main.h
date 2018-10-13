@@ -65,6 +65,8 @@
 #define M11_GPIO_Port GPIOD
 #define CHC_1L_Pin GPIO_PIN_0
 #define CHC_1L_GPIO_Port GPIOA
+#define LED_MOT_Pin GPIO_PIN_1
+#define LED_MOT_GPIO_Port GPIOA
 #define IND1_Pin GPIO_PIN_6
 #define IND1_GPIO_Port GPIOC
 #define IND2_Pin GPIO_PIN_7
