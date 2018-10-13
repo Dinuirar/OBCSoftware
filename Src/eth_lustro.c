@@ -8,10 +8,10 @@ extern void NVIC_SystemReset();
 
 //uint8_t remoteMAC[] = { 0x90, 0x48, 0x9a, 0xb8, 0x7a, 0x8d };
 uint8_t remoteMAC[] = { 0x6C, 0xC2, 0x17, 0xE8, 0x23, 0xDE };
-uint8_t remoteip[] = { 192, 168, 1, 136 };
+uint8_t remoteip[] = { 172, 16, 18, 120 };
 uint16_t port2 = 43;
 uint8_t MAC[] = { 0x20, 0x37, 0x09, 0x11, 0x42, 0x89 };
-uint8_t ip[] = { 192, 168, 1, 42 };
+uint8_t ip[] = { 172, 16, 18, 121 };
 uint16_t port = 43879;
 
 uint8_t counter = 0x00;
