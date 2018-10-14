@@ -60,6 +60,8 @@
 //#include "ds18b20/ds18b20.h"
 #include <string.h>
 //#include "ds18b20/ds18b20.h"
+#include "diskio.h"
+#include "ff.h"
 /* USER CODE END Includes */
 
 /* Private variables ---------------------------------------------------------*/
@@ -370,11 +372,11 @@ static void MX_SPI2_Init(void)
   hspi2.Init.CLKPolarity = SPI_POLARITY_LOW;
   hspi2.Init.CLKPhase = SPI_PHASE_1EDGE;
   hspi2.Init.NSS = SPI_NSS_SOFT;
-  hspi2.Init.BaudRatePrescaler = SPI_BAUDRATEPRESCALER_16;
+  hspi2.Init.BaudRatePrescaler = SPI_BAUDRATEPRESCALER_128;
   hspi2.Init.FirstBit = SPI_FIRSTBIT_MSB;
   hspi2.Init.TIMode = SPI_TIMODE_DISABLE;
   hspi2.Init.CRCCalculation = SPI_CRCCALCULATION_DISABLE;
-  hspi2.Init.CRCPolynomial = 10;
+  hspi2.Init.CRCPolynomial = 7; // --------------------------------------------- zmienione nie w Cube
   if (HAL_SPI_Init(&hspi2) != HAL_OK)
   {
     _Error_Handler(__FILE__, __LINE__);
@@ -682,6 +684,49 @@ void startReadSensors(void const * argument)
 //				temp_int,
 //				wIMUTemp
 				);
+
+		/* SC Card demo begin */
+			char buffer[128];
+			static FATFS g_sFatFs;
+			FRESULT fresult;
+			FIL file;
+			int len;
+			UINT bytes_written=10;
+			UINT bufsize=200;
+			uart_send( buf_uart );
+//			//mount SD card
+//			fresult = f_mount(&g_sFatFs, "", 0);
+
+//////			for (int i=0; i<2; i++){
+//			//open file on SD card
+//			fresult = f_open(&file, "file.txt", FA_OPEN_ALWAYS | FA_WRITE);
+//			//go to the end of the file
+//			fresult = f_lseek(&file, file.fsize);
+//			//generate some string
+//			len = sprintf( buffer, "pierwsza linia, iteracja %d\r\n",i);
+////			//write data to the file
+////			fresult = f_write(&file, &buf_uart, bufsize, &bytes_written);
+//////			len = sprintf( buffer, "druga linia, iteracja %d\r\n",i);
+////			//close file
+////			fresult = f_close(&file);
+//////			}
+
+			//open file on SD card
+//			fresult = f_open(&file, "file.txt", FA_OPEN_ALWAYS | FA_WRITE);
+//
+//			fresult = f_lseek(&file, file.fsize);
+//			//generate some string
+//			len = sprintf( buffer, "pierwsza linia, iteracja %d\r\n",i);
+//			//write data to the file
+//			fresult = f_write(&file, &buffer, bufsize, &bytes_written);
+//			len = sprintf( buffer, "druga linia, iteracja %d\r\n",i);
+//			fresult = f_write(&file, &buffer, bufsize, &bytes_written);
+//			//close file
+//			fresult = f_close(&file);
+
+
+		/* SD Card demo end*/
+
 		uart_send( buf_uart );
 		xSemaphoreGive( mxUartHandle);
 		osDelay( 1 * data_readout_interval );
