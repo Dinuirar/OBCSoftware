@@ -76,7 +76,7 @@ uint16_t configADC(uint8_t pgaVal, uint8_t mode, uint8_t dataRate) {
 uint16_t readADC(uint16_t address) {
 	uint16_t output;
 	uint16_t a, b;
-	uint8_t rec_buff[2];
+	uint8_t rec_buff[2] = {0};
 	HAL_I2C_Master_Receive(&hi2c1, address | mask_adr, rec_buff, 2, 0xFFFFFF);
 	a = rec_buff[0];
 	b = rec_buff[1];

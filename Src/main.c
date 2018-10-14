@@ -548,9 +548,12 @@ void startEthStream(void const * argument)
 		xSemaphoreTake(mxSPI1Handle, SPI1_TIMEOUT);
 		udp_send(data_readouts, 8);
 		xSemaphoreGive(mxSPI1Handle);
-		sprintf(mes_udp, "UDP Packet:\n\r\t0x%02x\t0x%02x\t0x%02x\t0x%02x\n\r\t0x%02x\t0x%02x\t0x%02x\t0x%02x\n\r",
+		sprintf(mes_udp, "UDP Packet:\n\r\t0x%02x\t0x%02x\t0x%02x\t0x%02x\n\r"
+				"\t0x%02x\t0x%02x\t0x%02x\t0x%02x\n\r"
+				"\t0x%02x\t0x%02x\t0x%02x\t0x%02x\n\r",
 				data_readouts[0], data_readouts[1], data_readouts[2], data_readouts[3],
-				data_readouts[4], data_readouts[5], data_readouts[6], data_readouts[7]);
+				data_readouts[4], data_readouts[5], data_readouts[6], data_readouts[7],
+				data_readouts[28], data_readouts[29], data_readouts[30], data_readouts[31]);
 		xSemaphoreGive(mxSensorDataHandle);
 
 		xSemaphoreTake( mxUartHandle, UART_TIMEOUT );
@@ -643,7 +646,14 @@ void startReadSensors(void const * argument)
 		xSemaphoreGive( mxI2CHandle );
 
 		xSemaphoreTake( mxSensorDataHandle, DATA_TIMEOUT );
-//		prepareData(wDiglett, wAbra, wKadabra, wRaichu, wIMUGyroX, wIMUGyroY, wIMUGyroZ, wIMUAccX, wIMUAccY, wIMUAccZ, wIMUMagX, wIMUMagY, wIMUMagZ, wIMUTemp, wRTC, wHumidity1, wTemperature1, wPRessure1, wHumidity2, wTemperature2, wPressure2, uptime);
+//		prepareData(wDiglett, wAbra, wKadabra, wRaichu,
+//				wIMUGyroX, wIMUGyroY, wIMUGyroZ,
+//				wIMUAccX, wIMUAccY, wIMUAccZ,
+//				wIMUMagX, wIMUMagY, wIMUMagZ,
+//				wIMUTemp, wRTC,
+//				wHumidity1, wTemperature1, wPressure1,
+//				wHumidity2, wTemperature2, wPressure2,
+//				uptime);
 		data_readouts[0] = wDiglett;
 		data_readouts[1] = wDiglett >> 8;
 		data_readouts[2] = wAbra;
