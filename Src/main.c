@@ -154,11 +154,9 @@ int main(void)
 	enc28j60clkout(2);
 	uart_send("initiated\n\r");
 
-	motor_enable = 1;
-	motor_enabled = 0;
+	motor_param = P_MOT_STOPPED;
+	motor_actual = A_MOT_STOPPED;
 	downstream_enable = 1;
-
-	//ds18b20_init();
 
 //	enableMotorRight();
 //	HAL_Delay(1000);
@@ -548,7 +546,7 @@ void startEthStream(void const * argument)
 		}
 		xSemaphoreTake(mxSensorDataHandle, DATA_TIMEOUT);
 		xSemaphoreTake(mxSPI1Handle, SPI1_TIMEOUT);
-		udp_send(data_readouts, 8);
+		udp_send(data_readouts, 12);
 		xSemaphoreGive(mxSPI1Handle);
 		sprintf(mes_udp, "UDP Packet:\n\r\t0x%02x\t0x%02x\t0x%02x\t0x%02x\n\r"
 				"\t0x%02x\t0x%02x\t0x%02x\t0x%02x\n\r"
@@ -658,12 +656,72 @@ void startReadSensors(void const * argument)
 //				uptime);
 		data_readouts[0] = wDiglett;
 		data_readouts[1] = wDiglett >> 8;
+
 		data_readouts[2] = wAbra;
 		data_readouts[3] = wAbra >> 8;
+
 		data_readouts[4] = wKadabra;
 		data_readouts[5] = wKadabra >> 8;
+
 		data_readouts[6] = wRaichu;
 		data_readouts[7] = wRaichu >> 8;
+
+		data_readouts[8] = wIMUGyroX;
+		data_readouts[9] = wIMUGyroX >> 8;
+
+		data_readouts[10] = wIMUGyroY;
+		data_readouts[11] = wIMUGyroY >> 8;
+
+		data_readouts[12] = wIMUGyroZ;
+		data_readouts[13] = wIMUGyroZ >> 8;
+
+		data_readouts[14] = wIMUAccX;
+		data_readouts[15] = wIMUAccX >> 8;
+
+		data_readouts[16] = wIMUAccY;
+		data_readouts[17] = wIMUAccY >> 8;
+
+		data_readouts[18] = wIMUAccZ;
+		data_readouts[19] = wIMUAccZ >> 8;
+
+		data_readouts[20] = wIMUMagX;
+		data_readouts[21] = wIMUMagX >> 8;
+
+		data_readouts[22] = wIMUMagY;
+		data_readouts[23] = wIMUMagY >> 8;
+
+		data_readouts[24] = wIMUMagZ;
+		data_readouts[25] = wIMUMagZ >> 8;
+
+		data_readouts[26] = wIMUTemp;
+		data_readouts[27] = wIMUTemp >> 8;
+
+		data_readouts[28] = wRTC;
+		data_readouts[29] = wRTC >> 8;
+
+		data_readouts[30] = wHumidity1;
+		data_readouts[31] = wHumidity1 >> 8;
+
+		data_readouts[32] = wTemperature1;
+		data_readouts[33] = wTemperature1 >> 8;
+
+		data_readouts[34] = wPressure1;
+		data_readouts[35] = wPressure1 >> 8;
+
+		data_readouts[36] = wHumidity2;
+		data_readouts[37] = wHumidity2 >> 8;
+
+		data_readouts[38] = wTemperature2;
+		data_readouts[39] = wTemperature2 >> 8;
+
+		data_readouts[40] = wPressure2;
+		data_readouts[41] = wPressure2 >> 8;
+
+		data_readouts[8] = uptime;
+		data_readouts[9] = uptime >> 8;
+		data_readouts[30] = uptime >> 16;
+		data_readouts[31] = uptime >> 24;
+
 		xSemaphoreGive( mxSensorDataHandle );
 
 		xSemaphoreTake( mxUartHandle, UART_TIMEOUT);
@@ -693,7 +751,7 @@ void startReadSensors(void const * argument)
 			int len;
 			UINT bytes_written=10;
 			UINT bufsize=200;
-			uart_send( buf_uart );
+//			uart_send( buf_uart );
 //			//mount SD card
 //			fresult = f_mount(&g_sFatFs, "", 0);
 
@@ -727,7 +785,7 @@ void startReadSensors(void const * argument)
 
 		/* SD Card demo end*/
 
-		uart_send( buf_uart );
+//		uart_send( buf_uart );
 		xSemaphoreGive( mxUartHandle);
 		osDelay( 1 * data_readout_interval );
 	}
@@ -738,32 +796,52 @@ void startReadSensors(void const * argument)
 void startControlMotor(void const * argument)
 {
   /* USER CODE BEGIN startControlMotor */
+
   /* Infinite loop */
 	for(;;) {
-		//read_temp( temp , no );
-		//temp_int = ds18b20_read_temp();
-//		if ( temp > MAX_MOT_TEMP ) {
+		if ( motor_param != motor_actual) {
+			if ( motor_param == P_MOT_RIGHT ) {
+				enableMotorRight();
+				motor_actual = A_MOT_RIGHT;
+			}
+			else if ( motor_param == P_MOT_LEFT ) {
+				if ( motor_actual == A_MOT_RIGHT ) {
+					disableMotor();
+					motor_actual = A_MOT_STOPPED;
+					for (uint16_t i = 0; i < 10000; i++);
+				}
+				enableMotorLeft();
+				motor_actual = A_MOT_LEFT;
+			}
+			else if ( motor_param == P_MOT_STOPPED) {
+				disableMotor();
+				motor_actual = A_MOT_STOPPED;
+			}
+		}
+//		//read_temp( temp , no );
+//		//temp_int = ds18b20_read_temp();
+////		if ( temp > MAX_MOT_TEMP ) {
+////			motor_enable = 0;
+////			//NVIC_SystemReset();
+////		}
+//		/*
+//		 * GPIO_InitStruct.Pin = IND1_Pin|IND2_Pin;
+//		 * GPIO_InitStruct.Mode = GPIO_MODE_INPUT;
+//		 * GPIO_InitStruct.Pull = GPIO_PULLDOWN;
+//		 * HAL_GPIO_Init(GPIOC, &GPIO_InitStruct);
+//		 */
+//		if ( HAL_GPIO_ReadPin(GPIOC, IND2_Pin) == GPIO_PIN_SET ) { // pin IND2 ustawiony jako alarm
 //			motor_enable = 0;
-//			//NVIC_SystemReset();
+//			HAL_Delay(10);
 //		}
-		/*
-		 * GPIO_InitStruct.Pin = IND1_Pin|IND2_Pin;
-		 * GPIO_InitStruct.Mode = GPIO_MODE_INPUT;
-		 * GPIO_InitStruct.Pull = GPIO_PULLDOWN;
-		 * HAL_GPIO_Init(GPIOC, &GPIO_InitStruct);
-		 */
-		if ( HAL_GPIO_ReadPin(GPIOC, IND2_Pin) == GPIO_PIN_SET ) { // pin IND2 ustawiony jako alarm
-			motor_enable = 0;
-			HAL_Delay(10);
-		}
-		if( motor_enable && !motor_enabled ) {
-			enableMotorRight();
-			motor_enabled = 1;
-		}
-		else if ( !motor_enable && motor_enabled) {
-			disableMotor();
-			motor_enabled = 0;
-		}
+//		if( motor_enable && !motor_enabled ) {
+//			enableMotorRight();
+//			motor_enabled = 1;
+//		}
+//		else if ( !motor_enable && motor_enabled) {
+//			disableMotor();
+//			motor_enabled = 0;
+//		}
 		osDelay(1);
   }
   /* USER CODE END startControlMotor */

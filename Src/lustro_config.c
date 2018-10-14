@@ -9,7 +9,8 @@
 
 uint8_t motor_speed = 0;
 uint8_t motor_enable = 0;
-uint8_t motor_enabled = 0;
+uint8_t motor_actual = A_MOT_STOPPED;
+uint8_t motor_param = P_MOT_RIGHT;
 
 uint8_t stream_select = 1;
 

@@ -23,29 +23,36 @@
 
 #define MAX_MOT_TEMP 			90 // 90 deg C
 
-#define SET_SPEED 				0x01
-#define SEND_NTH 				0x02
-#define SUDO_STOPM 				0x03
-#define GET_UC_TEMP 			0x04
-#define GET_PHOTO				0x05
-//
-#define GET_STATUS				0x07
-#define SUDO_SET_MODE			0x08
-#define GET_UPTIME				0x09
-#define DOWNSTREAM				0x0a
-#define SET_DOWNSTREAM_INTERVAL 0x0b
-#define SUDO_RUNM				0x0c
+#define A_MOT_STOPPED 	0
+#define A_MOT_LEFT 		1
+#define A_MOT_RIGHT 	2
+#define P_MOT_STOPPED	0
+#define P_MOT_LEFT 		1
+#define P_MOT_RIGHT		2
 
+#define SET_SPEED 				0x01
+#define STOPM	 				0x03
+#define STARTM					0x0c
 #define SUDO_RESET				0x06
+//
+#define SET_DOWNSTREAM_INTERVAL 0x0b
+
+#define DSEN					0x11 // downstream enable
+#define DSDIS					0x12 // downstream disable
+#define ADC_PGA					0x13 // set PGA value for ADC
 
 #define SLN 					0x0d // go to silent mode
 #define QSLN					0x0e // go to standby mode
+
+#define DOWNSTREAM				0x0a
+#define SUDO_SET_MODE			0x08
+#define GET_STATUS				0x07
+#define SEND_NTH 				0x02
+#define GET_UC_TEMP 			0x04
+#define GET_PHOTO				0x05
+#define GET_UPTIME				0x09
 #define GSCAN					0x0f // go to scanning mode
 #define GMAN					0x10 // go to manual mode
-#define DSEN					0x11 // downstream enable
-#define DSDIS					0x12 // downstream disable
-
-#define ADC_PGA					0x13 // set PGA value for ADC
 
 #define SPI1_TIMEOUT			100
 #define SPI2_TIMEOUT			100
@@ -68,9 +75,11 @@
 
 extern uint8_t _SILENCE;
 extern uint16_t DTR;
-extern uint8_t motor_speed;
-extern uint8_t motor_enable;
-extern uint8_t motor_enabled;
+
+extern uint8_t motor_speed; // motor's speed 0 - 100%
+extern uint8_t motor_param; // motor's desired rotation - P_MOT_STOPPED, P_MOT_LEFT, P_MOT_RIGHT
+extern uint8_t motor_actual; // motor's actual direction of rotation (A_MOT_STOPPED, A_MOT_LEFT, A_MOT_RIGHT)
+
 extern uint8_t stream_select;
 extern uint8_t obc_temp;
 extern uint8_t reset_obc_flag;

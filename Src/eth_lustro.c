@@ -138,6 +138,10 @@ uint8_t command_handler(uint8_t command, uint8_t arg1, uint8_t arg2) { // contro
 #define ADC_DTR					0x14 // set datarate for ADC
 	 *
 	 */
+	case STARTM:
+		motor_param = P_MOT_RIGHT;
+		return 1;
+
 	case QSLN:
 		_SILENCE = 0;
 		uart_send("GOING STANDBY\n\r");
@@ -187,10 +191,12 @@ uint8_t command_handler(uint8_t command, uint8_t arg1, uint8_t arg2) { // contro
 		}
 		return 1;
 
-	case SET_SPEED:
-		motor_speed = arg1;
-		sprintf(message, "motors' speed set to %d\n\r", arg1);
-		uart_send(message);
+	case SET_SPEED: // set-speed arg1 arg2; arg1 - direction, arg2 - value
+		if (arg1 < 3 || arg2 < 100) {
+			motor_param = arg1;
+			sprintf(message, "motors' speed set to %d\n\r", arg1);
+			uart_send(message);
+		}
 		return 1;
 
 	case DOWNSTREAM:
@@ -215,15 +221,15 @@ uint8_t command_handler(uint8_t command, uint8_t arg1, uint8_t arg2) { // contro
 		downstream_interval = arg1;
 		return SET_DOWNSTREAM_INTERVAL;
 
-	case SUDO_STOPM:
-		motor_enable = 0;
+	case STOPM:
+		motor_param = P_MOT_STOPPED;
 		uart_send("motor disabled\n\r");
-		return SUDO_STOPM;
+		return STOPM;
 
-	case SUDO_RUNM:
-		motor_enable = 1;
-		uart_send("motor enabled\n\r");
-		return SUDO_RUNM;
+//	case SUDO_RUNM:
+//		motor_enable = 1;
+//		uart_send("motor enabled\n\r");
+//		return SUDO_RUNM;
 
 	case SUDO_SET_MODE:
 		if (arg1 == SCANNING || arg1 == IDLE || arg1 == MANUAL) {
