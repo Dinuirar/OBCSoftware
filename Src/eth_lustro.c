@@ -308,14 +308,15 @@ uint8_t eth_packet_handler(uint8_t* received, uint16_t received_size) { // handl
 		//     if one less - return 5 (keep-alive packet)
 		//     else return 7 ("incorrect packet id\n\r")
 		received_len = received_size - 54;
-		if (packet_id == prev_id + 1) { // received packet is keep-alive, so discard it
-			make_tcp_ack_from_any(received, received_len, 0);
-			return 5;
-		}
-		received_len = received_size - 54;
+//		if (packet_id == prev_id + 1) { // received packet is keep-alive, so discard it
+//			make_tcp_ack_from_any(received, received_len, 0);
+//			uart_send("discarded!\n\r");
+//			return 5;
+//		}
+//		received_len = received_size - 54;
 		/* =================================================================================================*/
 		/* ------------------------------------------TODO 13->received_len (change and test)------------------------ */
-		make_tcp_ack_from_any(received, 13, 0);
+		make_tcp_ack_from_any(received, received_len, 0);
 		uart_send(" >>> ACK sent <<<\n\r");
 		next_expected_id = packet_id + received_len;
 		prev_id = packet_id;

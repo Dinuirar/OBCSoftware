@@ -59,6 +59,7 @@
 #define UART_TIMEOUT	 		100
 #define DATA_TIMEOUT			100
 #define I2C_TIMEOUT				100
+#define MOTOR_TIMEOUT			100
 #define SENSORCONFIG_TIMEOUT 	100
 /*
  * HELP:

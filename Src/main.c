@@ -508,7 +508,9 @@ void startEthReceive(void const * argument)
 			continue;
 		}
 		received_size = enc28j60PacketReceive(REC_BUF_SIZE, received);
+		xSemaphoreTake(mxMotorHandle, MOTOR_TIMEOUT);
 		flag = eth_packet_handler(received, received_size);
+		xSemaphoreGive(mxMotorHandle);
 		xSemaphoreGive(mxSPI1Handle);
 
 		xSemaphoreTake( mxUartHandle, UART_TIMEOUT);
@@ -799,6 +801,7 @@ void startControlMotor(void const * argument)
 
   /* Infinite loop */
 	for(;;) {
+		xSemaphoreTake( mxMotorHandle, MOTOR_TIMEOUT );
 		if ( motor_param != motor_actual) {
 			if ( motor_param == P_MOT_RIGHT ) {
 				enableMotorRight();
@@ -818,6 +821,7 @@ void startControlMotor(void const * argument)
 				motor_actual = A_MOT_STOPPED;
 			}
 		}
+		xSemaphoreGive( mxMotorHandle );
 //		//read_temp( temp , no );
 //		//temp_int = ds18b20_read_temp();
 ////		if ( temp > MAX_MOT_TEMP ) {
