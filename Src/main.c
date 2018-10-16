@@ -52,6 +52,7 @@
 #include "cmsis_os.h"
 
 /* USER CODE BEGIN Includes */
+#include "imu_lustro.h"
 #include "comm_lustro.h"
 #include "eth_lustro.h"
 #include "lustro_config.h"
@@ -59,7 +60,6 @@
 #include "data.h"
 //#include "ds18b20/ds18b20.h"
 #include <string.h>
-//#include "ds18b20/ds18b20.h"
 #include "diskio.h"
 #include "ff.h"
 /* USER CODE END Includes */
@@ -370,11 +370,11 @@ static void MX_SPI2_Init(void)
   hspi2.Init.CLKPolarity = SPI_POLARITY_LOW;
   hspi2.Init.CLKPhase = SPI_PHASE_1EDGE;
   hspi2.Init.NSS = SPI_NSS_SOFT;
-  hspi2.Init.BaudRatePrescaler = SPI_BAUDRATEPRESCALER_128;
+  hspi2.Init.BaudRatePrescaler = SPI_BAUDRATEPRESCALER_8;
   hspi2.Init.FirstBit = SPI_FIRSTBIT_MSB;
   hspi2.Init.TIMode = SPI_TIMODE_DISABLE;
   hspi2.Init.CRCCalculation = SPI_CRCCALCULATION_DISABLE;
-  hspi2.Init.CRCPolynomial = 7; // --------------------------------------------- zmienione nie w Cube
+  hspi2.Init.CRCPolynomial = 10;
   if (HAL_SPI_Init(&hspi2) != HAL_OK)
   {
     _Error_Handler(__FILE__, __LINE__);
@@ -445,6 +445,12 @@ static void MX_GPIO_Init(void)
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
   HAL_GPIO_Init(GPIOD, &GPIO_InitStruct);
 
+  /*Configure GPIO pins : PC2 PC3 */
+  GPIO_InitStruct.Pin = GPIO_PIN_2|GPIO_PIN_3;
+  GPIO_InitStruct.Mode = GPIO_MODE_IT_RISING;
+  GPIO_InitStruct.Pull = GPIO_NOPULL;
+  HAL_GPIO_Init(GPIOC, &GPIO_InitStruct);
+
   /*Configure GPIO pin : CHC_1L_Pin */
   GPIO_InitStruct.Pin = CHC_1L_Pin;
   GPIO_InitStruct.Mode = GPIO_MODE_INPUT;
@@ -472,6 +478,13 @@ static void MX_GPIO_Init(void)
 
   /*Configure peripheral I/O remapping */
   __HAL_AFIO_REMAP_PD01_ENABLE();
+
+  /* EXTI interrupt init*/
+  HAL_NVIC_SetPriority(EXTI2_IRQn, 5, 0);
+  HAL_NVIC_EnableIRQ(EXTI2_IRQn);
+
+  HAL_NVIC_SetPriority(EXTI3_IRQn, 5, 0);
+  HAL_NVIC_EnableIRQ(EXTI3_IRQn);
 
 }
 
@@ -548,7 +561,7 @@ void startEthStream(void const * argument)
 		}
 		xSemaphoreTake(mxSensorDataHandle, DATA_TIMEOUT);
 		xSemaphoreTake(mxSPI1Handle, SPI1_TIMEOUT);
-		udp_send(data_readouts, 12);
+		udp_send(data_readouts, LEN_DATA_TO_SEND);
 		xSemaphoreGive(mxSPI1Handle);
 		sprintf(mes_udp, "UDP Packet:\n\r\t0x%02x\t0x%02x\t0x%02x\t0x%02x\n\r"
 				"\t0x%02x\t0x%02x\t0x%02x\t0x%02x\n\r"
@@ -557,11 +570,10 @@ void startEthStream(void const * argument)
 				data_readouts[4], data_readouts[5], data_readouts[6], data_readouts[7],
 				data_readouts[28], data_readouts[29], data_readouts[30], data_readouts[31]);
 		xSemaphoreGive(mxSensorDataHandle);
-
 		xSemaphoreTake( mxUartHandle, UART_TIMEOUT );
 		uart_send(mes_udp);
 		xSemaphoreGive( mxUartHandle );
-		osDelay(100 * downstream_interval);
+		osDelay(3 * downstream_interval);
 //		osDelay(1);
 	}
   /* USER CODE END startEthStream */
@@ -592,40 +604,13 @@ void startReadSensors(void const * argument)
 	uint16_t wIMUAccX = 0, wIMUAccY = 0, wIMUAccZ = 0;
 	uint16_t wIMUMagX = 0, wIMUMagY = 0, wIMUMagZ = 0;
 	uint16_t wIMUTemp = 0;
-	uint16_t wRTC = 0;
-	uint16_t wHumidity1 = 0, wTemperature1 = 0, wPressure1 = 0;
-	uint16_t wHumidity2 = 0, wTemperature2 = 0, wPressure2 = 0;
+//	uint16_t wRTC = 0;
+//	uint16_t wHumidity1 = 0, wTemperature1 = 0, wPressure1 = 0;
+//	uint16_t wHumidity2 = 0, wTemperature2 = 0, wPressure2 = 0;
 
 	uint16_t counter = 0;
 	int temp_int = 0;
 	for(;;) {
-//		//read_temp( temp , no );
-//		//temp_int = ds18b20_read_temp();
-//		if ( temp > MAX_MOT_TEMP ) {
-//			motor_enable = 0;
-//			//NVIC_SystemReset();
-//		}
-//
-//		/*
-//  GPIO_InitStruct.Pin = IND1_Pin|IND2_Pin;
-//  GPIO_InitStruct.Mode = GPIO_MODE_INPUT;
-//  GPIO_InitStruct.Pull = GPIO_PULLDOWN;
-//  HAL_GPIO_Init(GPIOC, &GPIO_InitStruct);
-//		 */
-//		if ( HAL_GPIO_ReadPin(GPIOC, IND2_Pin) == GPIO_PIN_SET ) { // IND2
-//			motor_enable = 0;
-//			HAL_Delay(10);
-//		}
-//
-//		if( motor_enable && !motor_enabled ) {
-//			enableMotorRight();
-//			motor_enabled = 1;
-//		}
-//		else if ( !motor_enable && motor_enabled) {
-//			disableMotor();
-//			motor_enabled = 0;
-//		}
-
 		uptime = xTaskGetTickCount();
 
 		if( write_new_conf_adc ) { // save new ADC configuration to sensors
@@ -647,15 +632,28 @@ void startReadSensors(void const * argument)
 		wRaichu = readADC(aRaichu);
 		xSemaphoreGive( mxI2CHandle );
 
+//		xSemaphoreTake( mxSPI2Handle, SPI2_TIMEOUT);
+//		readIMUGyro( &wIMUGyroX, &wIMUGyroY, &wIMUGyroZ );
+//		xSemaphoreGive( mxSPI2Handle );
+
+//#define enableChip HAL_GPIO_WritePin(CS_IMU_GPIO_Port, CS_IMU_Pin, GPIO_PIN_RESET)
+//#define disableChip HAL_GPIO_WritePin(CS_IMU_GPIO_Port, CS_IMU_Pin, GPIO_PIN_SET)
+
+//		uint16_t dat[2000] = {0};
+//		for ( uint16_t i = 0; i < 2000; i++) { dat[i] = dat[i] + 1; }
+
+		uint8_t data[7] = {0}; // 3 registers, 2 bytes each
+		uint8_t address[] = {1, 0, 0, 0, 0, 0, 0, 0};
+		HAL_GPIO_WritePin(CS_IMU_GPIO_Port, CS_IMU_Pin, GPIO_PIN_RESET);
+		xSemaphoreTake( mxSPI2Handle, SPI2_TIMEOUT);
+		HAL_SPI_TransmitReceive(&hspi2, address, data, 7, HAL_MAX_DELAY);
+		xSemaphoreGive( mxSPI2Handle );
+		wIMUGyroX = data[0];
+		wIMUGyroY = data[1];
+		wIMUGyroZ = data[2];
+		HAL_GPIO_WritePin(CS_IMU_GPIO_Port, CS_IMU_Pin, GPIO_PIN_SET);
+
 		xSemaphoreTake( mxSensorDataHandle, DATA_TIMEOUT );
-//		prepareData(wDiglett, wAbra, wKadabra, wRaichu,
-//				wIMUGyroX, wIMUGyroY, wIMUGyroZ,
-//				wIMUAccX, wIMUAccY, wIMUAccZ,
-//				wIMUMagX, wIMUMagY, wIMUMagZ,
-//				wIMUTemp, wRTC,
-//				wHumidity1, wTemperature1, wPressure1,
-//				wHumidity2, wTemperature2, wPressure2,
-//				uptime);
 		data_readouts[0] = wDiglett;
 		data_readouts[1] = wDiglett >> 8;
 
@@ -668,127 +666,74 @@ void startReadSensors(void const * argument)
 		data_readouts[6] = wRaichu;
 		data_readouts[7] = wRaichu >> 8;
 
-		data_readouts[8] = wIMUGyroX;
-		data_readouts[9] = wIMUGyroX >> 8;
-
-		data_readouts[10] = wIMUGyroY;
-		data_readouts[11] = wIMUGyroY >> 8;
-
-		data_readouts[12] = wIMUGyroZ;
-		data_readouts[13] = wIMUGyroZ >> 8;
-
-		data_readouts[14] = wIMUAccX;
-		data_readouts[15] = wIMUAccX >> 8;
-
-		data_readouts[16] = wIMUAccY;
-		data_readouts[17] = wIMUAccY >> 8;
-
-		data_readouts[18] = wIMUAccZ;
-		data_readouts[19] = wIMUAccZ >> 8;
-
-		data_readouts[20] = wIMUMagX;
-		data_readouts[21] = wIMUMagX >> 8;
-
-		data_readouts[22] = wIMUMagY;
-		data_readouts[23] = wIMUMagY >> 8;
-
-		data_readouts[24] = wIMUMagZ;
-		data_readouts[25] = wIMUMagZ >> 8;
-
-		data_readouts[26] = wIMUTemp;
-		data_readouts[27] = wIMUTemp >> 8;
-
-		data_readouts[28] = wRTC;
-		data_readouts[29] = wRTC >> 8;
-
-		data_readouts[30] = wHumidity1;
-		data_readouts[31] = wHumidity1 >> 8;
-
-		data_readouts[32] = wTemperature1;
-		data_readouts[33] = wTemperature1 >> 8;
-
-		data_readouts[34] = wPressure1;
-		data_readouts[35] = wPressure1 >> 8;
-
-		data_readouts[36] = wHumidity2;
-		data_readouts[37] = wHumidity2 >> 8;
-
-		data_readouts[38] = wTemperature2;
-		data_readouts[39] = wTemperature2 >> 8;
-
-		data_readouts[40] = wPressure2;
-		data_readouts[41] = wPressure2 >> 8;
-
 		data_readouts[8] = uptime;
 		data_readouts[9] = uptime >> 8;
-		data_readouts[30] = uptime >> 16;
-		data_readouts[31] = uptime >> 24;
+		data_readouts[10] = uptime >> 16;
+		data_readouts[11] = uptime >> 24;
+
+		data_readouts[12] = wIMUGyroX;
+		data_readouts[13] = wIMUGyroX >> 8;
+
+		data_readouts[14] = wIMUGyroY;
+		data_readouts[15] = wIMUGyroY >> 8;
+
+		data_readouts[16] = wIMUGyroZ;
+		data_readouts[17] = wIMUGyroZ >> 8;
+
+		data_readouts[18] = wIMUAccX;
+		data_readouts[19] = wIMUAccX >> 8;
+
+		data_readouts[20] = wIMUAccY;
+		data_readouts[21] = wIMUAccY >> 8;
+
+		data_readouts[22] = wIMUAccZ;
+		data_readouts[23] = wIMUAccZ >> 8;
+
+		data_readouts[24] = wIMUMagX;
+		data_readouts[25] = wIMUMagX >> 8;
+
+		data_readouts[26] = wIMUMagY;
+		data_readouts[27] = wIMUMagY >> 8;
+
+		data_readouts[28] = wIMUMagZ;
+		data_readouts[29] = wIMUMagZ >> 8;
+
+		data_readouts[30] = rotation_number;
+		data_readouts[31] = rotation_number >> 8;
+
+		data_readouts[32] = 0xDA;
+		data_readouts[33] = 0xDB;
+		data_readouts[34] = 0xDC;
+		data_readouts[35] = 0xDD;
+		data_readouts[36] = 0xDE;
+		data_readouts[37] = 0xDF;
 
 		xSemaphoreGive( mxSensorDataHandle );
 
 		xSemaphoreTake( mxUartHandle, UART_TIMEOUT);
 		strcpy( buf_uart, "" );
 		sprintf( buf_uart,
-				"tick=%d\t%d\t%d\t%d\t%d\t%d\n\r"
-//				"IMU:\t\t%d\t%d\t%d\t%d\t%d\t%d\t%d\t%d\t%d\t%d\n\r"
-//				"HTP1:\t\t%d\t%d\t%d\n\r"
-//				"HTP2:\t\t%d\t%d\t%d\n\r"
-				"RTC:\t\t%d\n\r",
-//				"temp:\t\t%d\n\r"
-//				"tempIMU:\t%d\n\r\n\r",
-				uptime, counter++, wDiglett, wAbra, wKadabra, wRaichu,
-//				wIMUAccX, wIMUAccY, wIMUAccZ, wIMUMagX, wIMUMagY, wIMUMagZ, wIMUGyroX, wIMUGyroY, wIMUGyroZ,
-//				wHumidity1, wTemperature1, wPressure1,
-//				wHumidity2, wTemperature2, wPressure2,
-				wRTC
-//				temp_int,
-//				wIMUTemp
+				"tick=%d\t%d\t%d\t%d\t%d\t%d\n\r",
+				uptime, counter++, wDiglett, //wAbra, wKadabra, wRaichu,
+				wIMUGyroX, wIMUGyroY, wIMUGyroZ
 				);
-
-		/* SC Card demo begin */
-			char buffer[128];
-			static FATFS g_sFatFs;
-			FRESULT fresult;
-			FIL file;
-			int len;
-			UINT bytes_written=10;
-			UINT bufsize=200;
-//			uart_send( buf_uart );
-//			//mount SD card
-//			fresult = f_mount(&g_sFatFs, "", 0);
-
-//////			for (int i=0; i<2; i++){
-//			//open file on SD card
-//			fresult = f_open(&file, "file.txt", FA_OPEN_ALWAYS | FA_WRITE);
-//			//go to the end of the file
-//			fresult = f_lseek(&file, file.fsize);
-//			//generate some string
-//			len = sprintf( buffer, "pierwsza linia, iteracja %d\r\n",i);
-////			//write data to the file
-////			fresult = f_write(&file, &buf_uart, bufsize, &bytes_written);
-//////			len = sprintf( buffer, "druga linia, iteracja %d\r\n",i);
-////			//close file
-////			fresult = f_close(&file);
-//////			}
-
-			//open file on SD card
-//			fresult = f_open(&file, "file.txt", FA_OPEN_ALWAYS | FA_WRITE);
-//
-//			fresult = f_lseek(&file, file.fsize);
-//			//generate some string
-//			len = sprintf( buffer, "pierwsza linia, iteracja %d\r\n",i);
-//			//write data to the file
-//			fresult = f_write(&file, &buffer, bufsize, &bytes_written);
-//			len = sprintf( buffer, "druga linia, iteracja %d\r\n",i);
-//			fresult = f_write(&file, &buffer, bufsize, &bytes_written);
-//			//close file
-//			fresult = f_close(&file);
-
-
-		/* SD Card demo end*/
-
-//		uart_send( buf_uart );
+		uart_send( buf_uart );
 		xSemaphoreGive( mxUartHandle);
+
+//		if ( downstream_enable ) {
+//			xSemaphoreTake(mxSensorDataHandle, DATA_TIMEOUT);
+//			xSemaphoreTake(mxSPI1Handle, SPI1_TIMEOUT);
+//			udp_send(data_readouts, LEN_DATA_TO_SEND);
+//			xSemaphoreGive(mxSPI1Handle);
+//			sprintf(mes_udp, "UDP Packet:\n\r\t0x%02x\t0x%02x\t0x%02x\t0x%02x\n\r"
+//					"\t0x%02x\t0x%02x\t0x%02x\t0x%02x\n\r"
+//					"\t0x%02x\t0x%02x\t0x%02x\t0x%02x\n\r",
+//					data_readouts[0], data_readouts[1], data_readouts[2], data_readouts[3],
+//					data_readouts[4], data_readouts[5], data_readouts[6], data_readouts[7],
+//					data_readouts[28], data_readouts[29], data_readouts[30], data_readouts[31]);
+//			xSemaphoreGive(mxSensorDataHandle);
+//		}
+
 		osDelay( 1 * data_readout_interval );
 	}
   /* USER CODE END startReadSensors */

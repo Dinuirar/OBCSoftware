@@ -27,6 +27,7 @@
 
 extern I2C_HandleTypeDef hi2c1;
 extern SPI_HandleTypeDef hspi1;
+extern SPI_HandleTypeDef hspi2;
 extern UART_HandleTypeDef huart2;
 extern uint8_t buf_uart[];
 
@@ -41,6 +42,15 @@ extern void spi_receive_byte(uint8_t* b);
 
 /// \brief Send and receive byte on SPI interface
 extern uint8_t spi_sendrecv(uint8_t byte);
+
+extern void spi2_send_byte(uint8_t* b);
+
+/// \brief Receive byte from SPI interface
+extern void spi2_receive_byte(uint8_t* b);
+
+/// \brief Send and receive byte on SPI interface
+extern uint8_t spi2_sendrecv(uint8_t byte);
+
 /** @} */
 
 #endif /* COMM_LUSTRO_H_ */

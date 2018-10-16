@@ -9,6 +9,8 @@
 
 #include "stm32f1xx_hal.h"
 
+#define LEN_DATA_TO_SEND 38
+
 /**
  *  @defgroup CONFIG Common configuration
  * \brief control parametres

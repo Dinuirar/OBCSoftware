@@ -1,7 +1,7 @@
 [PreviousGenFiles]
-HeaderPath=C:/Users/jw/Documents/FunWithNucleo/Inc
+HeaderPath=C:/Users/Myles/Documents/LUSTRO_complete/FunWithNucleo/Inc
 HeaderFiles=FreeRTOSConfig.h;stm32f1xx_it.h;stm32f1xx_hal_conf.h;main.h;
-SourcePath=C:/Users/jw/Documents/FunWithNucleo/Src
+SourcePath=C:/Users/Myles/Documents/LUSTRO_complete/FunWithNucleo/Src
 SourceFiles=freertos.c;stm32f1xx_it.c;stm32f1xx_hal_msp.c;stm32f1xx_hal_timebase_TIM.c;main.c;
 
 [PreviousLibFiles]

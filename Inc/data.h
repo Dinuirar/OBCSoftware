@@ -11,6 +11,7 @@
 #include "lustro_config.h"
 
 extern uint8_t data_readouts[];
+extern uint16_t rotation_number;
 
 void prepareData(
 		uint16_t wDiglett, uint16_t wAbra, uint16_t wKadabra, uint16_t wRaichu,

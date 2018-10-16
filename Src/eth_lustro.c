@@ -140,6 +140,7 @@ uint8_t command_handler(uint8_t command, uint8_t arg1, uint8_t arg2) { // contro
 	 */
 	case STARTM:
 		motor_param = P_MOT_RIGHT;
+		uart_send("starting motor\n\r");
 		return 1;
 
 	case QSLN:

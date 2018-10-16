@@ -6,6 +6,7 @@
  */
 #include "data.h"
 
+uint16_t rotation_number = 0;
 uint8_t data_readouts[64] = {0};
 
 void prepareData(
