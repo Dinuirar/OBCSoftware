@@ -58,10 +58,9 @@
 #include "lustro_config.h"
 #include "transducers.h"
 #include "data.h"
-//#include "ds18b20/ds18b20.h"
-#include <string.h>
 #include "diskio.h"
 #include "ff.h"
+#include <string.h>
 /* USER CODE END Includes */
 
 /* Private variables ---------------------------------------------------------*/
@@ -77,7 +76,6 @@ osThreadId vEthReceiveHandle;
 osThreadId vEthStreamHandle;
 osThreadId vReadSensorsHandle;
 osThreadId vControlMotorHandle;
-osTimerId encTimerHandle;
 osMutexId mxSensorDataHandle;
 osMutexId mxUartHandle;
 osMutexId mxSPI1Handle;
@@ -102,7 +100,6 @@ void startEthReceive(void const * argument);
 void startEthStream(void const * argument);
 void startReadSensors(void const * argument);
 void startControlMotor(void const * argument);
-void encCallback(void const * argument);
 
 /* USER CODE BEGIN PFP */
 /* Private function prototypes -----------------------------------------------*/
@@ -151,24 +148,17 @@ int main(void)
 	ES_enc28j60Init(MAC);
 	ES_init_ip_arp_udp_tcp(MAC, ip, port);
 	enc28j60PhyWrite(PHLCON, 0x476);
+
+	uint8_t tmp = enc28j60Read(0x00);
+	sprintf(buf_uart, "tmp: 0x%02x\n\r", tmp);
+	uart_send(buf_uart);
+
 	enc28j60clkout(2);
 	uart_send("initiated\n\r");
 
 	motor_param = P_MOT_STOPPED;
 	motor_actual = A_MOT_STOPPED;
 	downstream_enable = 1;
-
-//	enableMotorRight();
-//	HAL_Delay(1000);
-//	disableMotor();
-//	HAL_Delay(100);
-//	enableMotorLeft();
-//	HAL_Delay(1000);
-//	disableMotor();
-//	HAL_Delay(100);
-
-//	HAL_GPIO_WritePin(M11_GPIO_PORT, M11_Pin, GPIO_PIN_SET);
-	//HAL_GPIO_WritePin( )
 
   /* USER CODE END 2 */
 
@@ -209,11 +199,6 @@ int main(void)
 	/* add semaphores, ... */
   /* USER CODE END RTOS_SEMAPHORES */
 
-  /* Create the timer(s) */
-  /* definition and creation of encTimer */
-  osTimerDef(encTimer, encCallback);
-  encTimerHandle = osTimerCreate(osTimer(encTimer), osTimerPeriodic, NULL);
-
   /* USER CODE BEGIN RTOS_TIMERS */
 	/* start timers, add new ones, ... */
   /* USER CODE END RTOS_TIMERS */
@@ -232,7 +217,7 @@ int main(void)
   vEthStreamHandle = osThreadCreate(osThread(vEthStream), NULL);
 
   /* definition and creation of vReadSensors */
-  osThreadDef(vReadSensors, startReadSensors, osPriorityNormal, 0, 128);
+  osThreadDef(vReadSensors, startReadSensors, osPriorityNormal, 0, 256);
   vReadSensorsHandle = osThreadCreate(osThread(vReadSensors), NULL);
 
   /* definition and creation of vControlMotor */
@@ -573,8 +558,8 @@ void startEthStream(void const * argument)
 		xSemaphoreTake( mxUartHandle, UART_TIMEOUT );
 		uart_send(mes_udp);
 		xSemaphoreGive( mxUartHandle );
-		osDelay(3 * downstream_interval);
-//		osDelay(1);
+		osDelay(10 * downstream_interval);
+		//osDelay(1);
 	}
   /* USER CODE END startEthStream */
 }
@@ -604,12 +589,15 @@ void startReadSensors(void const * argument)
 	uint16_t wIMUAccX = 0, wIMUAccY = 0, wIMUAccZ = 0;
 	uint16_t wIMUMagX = 0, wIMUMagY = 0, wIMUMagZ = 0;
 	uint16_t wIMUTemp = 0;
-//	uint16_t wRTC = 0;
 //	uint16_t wHumidity1 = 0, wTemperature1 = 0, wPressure1 = 0;
 //	uint16_t wHumidity2 = 0, wTemperature2 = 0, wPressure2 = 0;
 
 	uint16_t counter = 0;
 	int temp_int = 0;
+
+	uint8_t data[32] = {0}; // 6 bytes each
+	uint8_t address[32];
+
 	for(;;) {
 		uptime = xTaskGetTickCount();
 
@@ -636,22 +624,19 @@ void startReadSensors(void const * argument)
 //		readIMUGyro( &wIMUGyroX, &wIMUGyroY, &wIMUGyroZ );
 //		xSemaphoreGive( mxSPI2Handle );
 
-//#define enableChip HAL_GPIO_WritePin(CS_IMU_GPIO_Port, CS_IMU_Pin, GPIO_PIN_RESET)
-//#define disableChip HAL_GPIO_WritePin(CS_IMU_GPIO_Port, CS_IMU_Pin, GPIO_PIN_SET)
-
-//		uint16_t dat[2000] = {0};
-//		for ( uint16_t i = 0; i < 2000; i++) { dat[i] = dat[i] + 1; }
-
-		uint8_t data[7] = {0}; // 3 registers, 2 bytes each
-		uint8_t address[] = {1, 0, 0, 0, 0, 0, 0, 0};
+		address[0] = 0xBB;
 		HAL_GPIO_WritePin(CS_IMU_GPIO_Port, CS_IMU_Pin, GPIO_PIN_RESET);
 		xSemaphoreTake( mxSPI2Handle, SPI2_TIMEOUT);
-		HAL_SPI_TransmitReceive(&hspi2, address, data, 7, HAL_MAX_DELAY);
+		HAL_SPI_TransmitReceive(&hspi2, address, data, 15, HAL_MAX_DELAY);
 		xSemaphoreGive( mxSPI2Handle );
-		wIMUGyroX = data[0];
-		wIMUGyroY = data[1];
-		wIMUGyroZ = data[2];
 		HAL_GPIO_WritePin(CS_IMU_GPIO_Port, CS_IMU_Pin, GPIO_PIN_SET);
+		wIMUAccX = (uint16_t)data[1] << 8 | data[2];
+		wIMUAccY = (uint16_t)data[3] << 8 | data[4];
+		wIMUAccZ = (uint16_t)data[5] << 8 | data[6];
+		wIMUTemp = (uint16_t)data[7] << 8 | data[8];
+		wIMUGyroX = (uint16_t)data[9] << 8 | data[10];
+		wIMUGyroY = (uint16_t)data[11] << 8 | data[12];
+		wIMUGyroZ = (uint16_t)data[13] << 8 | data[14];
 
 		xSemaphoreTake( mxSensorDataHandle, DATA_TIMEOUT );
 		data_readouts[0] = wDiglett;
@@ -711,11 +696,11 @@ void startReadSensors(void const * argument)
 		xSemaphoreGive( mxSensorDataHandle );
 
 		xSemaphoreTake( mxUartHandle, UART_TIMEOUT);
-		strcpy( buf_uart, "" );
 		sprintf( buf_uart,
-				"tick=%d\t%d\t%d\t%d\t%d\t%d\n\r",
+				"t=%d\t%d\t%d\t%d\t%d\t%d\t%d\t%d\t%d\n\r",
 				uptime, counter++, wDiglett, //wAbra, wKadabra, wRaichu,
-				wIMUGyroX, wIMUGyroY, wIMUGyroZ
+				wIMUGyroX, wIMUGyroY, wIMUGyroZ,
+				wIMUAccX, wIMUAccY, wIMUAccZ
 				);
 		uart_send( buf_uart );
 		xSemaphoreGive( mxUartHandle);
@@ -794,14 +779,6 @@ void startControlMotor(void const * argument)
 		osDelay(1);
   }
   /* USER CODE END startControlMotor */
-}
-
-/* encCallback function */
-void encCallback(void const * argument)
-{
-  /* USER CODE BEGIN encCallback */
-
-  /* USER CODE END encCallback */
 }
 
 /**

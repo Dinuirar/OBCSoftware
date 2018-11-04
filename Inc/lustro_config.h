@@ -56,13 +56,13 @@
 #define GSCAN					0x0f // go to scanning mode
 #define GMAN					0x10 // go to manual mode
 
-#define SPI1_TIMEOUT			100
-#define SPI2_TIMEOUT			100
-#define UART_TIMEOUT	 		100
-#define DATA_TIMEOUT			100
-#define I2C_TIMEOUT				100
-#define MOTOR_TIMEOUT			100
-#define SENSORCONFIG_TIMEOUT 	100
+#define SPI1_TIMEOUT			1000
+#define SPI2_TIMEOUT			1000
+#define UART_TIMEOUT	 		1000
+#define DATA_TIMEOUT			1000
+#define I2C_TIMEOUT				1000
+#define MOTOR_TIMEOUT			1000
+#define SENSORCONFIG_TIMEOUT 	1000
 /*
  * HELP:
  * sudo_reset - reset the microcontroller

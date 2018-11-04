@@ -1,9 +1,8 @@
 #MicroXplorer Configuration settings - do not modify
 FREERTOS.FootprintOK=true
-FREERTOS.IPParameters=Tasks01,configUSE_TIMERS,FootprintOK,configTOTAL_HEAP_SIZE,Timers01,Mutexes01
+FREERTOS.IPParameters=Tasks01,configUSE_TIMERS,FootprintOK,configTOTAL_HEAP_SIZE,Mutexes01
 FREERTOS.Mutexes01=mxSensorData,Dynamic,NULL;mxUart,Dynamic,NULL;mxSPI1,Dynamic,NULL;mxSPI2,Dynamic,NULL;mxMotor,Dynamic,NULL;mxSensorConfig,Dynamic,NULL;mxI2C,Dynamic,NULL
-FREERTOS.Tasks01=defaultTask,0,128,startDefaultTask,Default,NULL,Dynamic,NULL,NULL;vEthReceive,0,128,startEthReceive,Default,NULL,Dynamic,NULL,NULL;vEthStream,0,128,startEthStream,Default,NULL,Dynamic,NULL,NULL;vReadSensors,0,128,startReadSensors,Default,NULL,Dynamic,NULL,NULL;vControlMotor,0,128,startControlMotor,Default,NULL,Dynamic,NULL,NULL
-FREERTOS.Timers01=encTimer,encCallback,osTimerPeriodic,Default,NULL,Dynamic,NULL
+FREERTOS.Tasks01=defaultTask,0,128,startDefaultTask,Default,NULL,Dynamic,NULL,NULL;vEthReceive,0,128,startEthReceive,Default,NULL,Dynamic,NULL,NULL;vEthStream,0,128,startEthStream,Default,NULL,Dynamic,NULL,NULL;vReadSensors,0,256,startReadSensors,Default,NULL,Dynamic,NULL,NULL;vControlMotor,0,128,startControlMotor,Default,NULL,Dynamic,NULL,NULL
 FREERTOS.configTOTAL_HEAP_SIZE=8192
 FREERTOS.configUSE_TIMERS=1
 File.Version=6

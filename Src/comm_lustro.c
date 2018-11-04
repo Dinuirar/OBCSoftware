@@ -2,7 +2,7 @@
 #include "lustro_config.h"
 #include <string.h>
 
-uint8_t buf_uart[200] = {0};
+uint8_t buf_uart[300] = {0};
 
 void uart_send(char* s) {
 	HAL_UART_Transmit(&huart2, (uint8_t*)s, strlen(s), 500);
