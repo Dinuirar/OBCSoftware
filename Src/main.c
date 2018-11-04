@@ -548,12 +548,17 @@ void startEthStream(void const * argument)
 		xSemaphoreTake(mxSPI1Handle, SPI1_TIMEOUT);
 		udp_send(data_readouts, LEN_DATA_TO_SEND);
 		xSemaphoreGive(mxSPI1Handle);
-		sprintf(mes_udp, "UDP Packet:\n\r\t0x%02x\t0x%02x\t0x%02x\t0x%02x\n\r"
-				"\t0x%02x\t0x%02x\t0x%02x\t0x%02x\n\r"
-				"\t0x%02x\t0x%02x\t0x%02x\t0x%02x\n\r",
-				data_readouts[0], data_readouts[1], data_readouts[2], data_readouts[3],
-				data_readouts[4], data_readouts[5], data_readouts[6], data_readouts[7],
-				data_readouts[28], data_readouts[29], data_readouts[30], data_readouts[31]);
+		sprintf( mes_udp, "UDP sent\n\r");
+//		sprintf(mes_udp, "UDP Packet:\n\r\t0x%02x\t0x%02x\t0x%02x\t0x%02x\n\r"
+//				"\t0x%02x\t0x%02x\t0x%02x\t0x%02x\n\r"
+//				"\t0x%02x\t0x%02x\t0x%02x\t0x%02x\n\r"
+//				"\t0x%02x\t0x%02x\t0x%02x\t0x%02x\n\r"
+//				"\t0x%02x\t0x%02x\t0x%02x\t0x%02x\n\r",
+//				data_readouts[0], data_readouts[1], data_readouts[2], data_readouts[3],
+//				data_readouts[4], data_readouts[5], data_readouts[6], data_readouts[7],
+//				data_readouts[8], data_readouts[9], data_readouts[10], data_readouts[11],
+//				data_readouts[12], data_readouts[13], data_readouts[14], data_readouts[15],
+//				data_readouts[16], data_readouts[17], data_readouts[18], data_readouts[19]);
 		xSemaphoreGive(mxSensorDataHandle);
 		xSemaphoreTake( mxUartHandle, UART_TIMEOUT );
 		uart_send(mes_udp);
@@ -656,14 +661,14 @@ void startReadSensors(void const * argument)
 		data_readouts[10] = uptime >> 16;
 		data_readouts[11] = uptime >> 24;
 
-		data_readouts[12] = wIMUGyroX;
-		data_readouts[13] = wIMUGyroX >> 8;
+		data_readouts[12] = wIMUGyroX >> 8;
+		data_readouts[13] = wIMUGyroX;
 
-		data_readouts[14] = wIMUGyroY;
-		data_readouts[15] = wIMUGyroY >> 8;
+		data_readouts[14] = wIMUGyroY >> 8;
+		data_readouts[15] = wIMUGyroY;
 
-		data_readouts[16] = wIMUGyroZ;
-		data_readouts[17] = wIMUGyroZ >> 8;
+		data_readouts[16] = wIMUGyroZ >> 8;
+		data_readouts[17] = wIMUGyroZ;
 
 		data_readouts[18] = wIMUAccX;
 		data_readouts[19] = wIMUAccX >> 8;
@@ -686,21 +691,22 @@ void startReadSensors(void const * argument)
 		data_readouts[30] = rotation_number;
 		data_readouts[31] = rotation_number >> 8;
 
-		data_readouts[32] = 0xDA;
-		data_readouts[33] = 0xDB;
-		data_readouts[34] = 0xDC;
-		data_readouts[35] = 0xDD;
-		data_readouts[36] = 0xDE;
-		data_readouts[37] = 0xDF;
+		data_readouts[32] = wIMUTemp;
+		data_readouts[33] = wIMUTemp >> 8;
+		data_readouts[34] = 0xFF;
+		data_readouts[35] = 0xFF;
+		data_readouts[36] = 0xFE;
+		data_readouts[37] = 0xFF;
 
 		xSemaphoreGive( mxSensorDataHandle );
 
 		xSemaphoreTake( mxUartHandle, UART_TIMEOUT);
 		sprintf( buf_uart,
-				"t=%d\t%d\t%d\t%d\t%d\t%d\t%d\t%d\t%d\n\r",
+				"t=%d\t%d\t%d\t%d\t%d\t%d\t%d\t%d\t%d\t%d\n\r",
 				uptime, counter++, wDiglett, //wAbra, wKadabra, wRaichu,
 				wIMUGyroX, wIMUGyroY, wIMUGyroZ,
-				wIMUAccX, wIMUAccY, wIMUAccZ
+				wIMUAccX, wIMUAccY, wIMUAccZ,
+				wIMUTemp
 				);
 		uart_send( buf_uart );
 		xSemaphoreGive( mxUartHandle);
