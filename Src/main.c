@@ -661,14 +661,14 @@ void startReadSensors(void const * argument)
 		data_readouts[10] = uptime >> 16;
 		data_readouts[11] = uptime >> 24;
 
-		data_readouts[12] = wIMUGyroX >> 8;
-		data_readouts[13] = wIMUGyroX;
+		data_readouts[12] = wIMUGyroX;
+		data_readouts[13] = wIMUGyroX >> 8;
 
-		data_readouts[14] = wIMUGyroY >> 8;
-		data_readouts[15] = wIMUGyroY;
+		data_readouts[14] = wIMUGyroY;
+		data_readouts[15] = wIMUGyroY >> 8;
 
-		data_readouts[16] = wIMUGyroZ >> 8;
-		data_readouts[17] = wIMUGyroZ;
+		data_readouts[16] = wIMUGyroZ;
+		data_readouts[17] = wIMUGyroZ >> 8;
 
 		data_readouts[18] = wIMUAccX;
 		data_readouts[19] = wIMUAccX >> 8;
