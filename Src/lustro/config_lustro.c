@@ -5,7 +5,7 @@
  *      Author: Myles
  */
 
-#include "lustro_config.h"
+#include "config_lustro.h"
 
 uint8_t motor_speed = 0;
 uint8_t motor_enable = 0;

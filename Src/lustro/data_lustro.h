@@ -8,7 +8,7 @@
 #ifndef DATA_H_
 #define DATA_H_
 
-#include "lustro_config.h"
+#include "config_lustro.h"
 
 extern uint8_t data_readouts[];
 extern uint16_t rotation_number;

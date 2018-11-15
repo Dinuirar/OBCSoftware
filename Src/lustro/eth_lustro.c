@@ -1,7 +1,7 @@
 #include "eth_lustro.h"
-#include "lustro_config.h"
 #include "transducers.h"
 #include <string.h>
+#include "config_lustro.h"
 
 // command for the reset of ARM core
 extern void NVIC_SystemReset();

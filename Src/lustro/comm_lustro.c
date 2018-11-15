@@ -1,6 +1,6 @@
 #include "comm_lustro.h"
-#include "lustro_config.h"
 #include <string.h>
+#include "config_lustro.h"
 
 uint8_t buf_uart[300] = {0};
 

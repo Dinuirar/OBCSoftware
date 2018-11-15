@@ -4,7 +4,7 @@
  *  Created on: 06.10.2018
  *      Author: Myles
  */
-#include "data.h"
+#include "data_lustro.h"
 
 uint16_t rotation_number = 0;
 uint8_t data_readouts[64] = {0};

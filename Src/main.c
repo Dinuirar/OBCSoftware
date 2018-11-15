@@ -52,15 +52,16 @@
 #include "cmsis_os.h"
 
 /* USER CODE BEGIN Includes */
-#include "imu_lustro.h"
-#include "comm_lustro.h"
-#include "eth_lustro.h"
-#include "lustro_config.h"
-#include "transducers.h"
-#include "data.h"
-#include "diskio.h"
-#include "ff.h"
+#include "lustro/imu_lustro.h"
+#include "lustro/comm_lustro.h"
+#include "lustro/eth_lustro.h"
+#include "lustro/transducers.h"
+#include "lustro/sd_lustro.h"
+#include "lustro/config_lustro.h"
+#include "lustro/data_lustro.h"
+
 #include <string.h>
+
 /* USER CODE END Includes */
 
 /* Private variables ---------------------------------------------------------*/

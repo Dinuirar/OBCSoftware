@@ -7,10 +7,10 @@
 #ifndef ETH_LUSTRO_H_
 #define ETH_LUSTRO_H_
 
-#include "stm32f1xx_hal.h"
-#include "enc28j60.h"
-#include "ip_arp_udp_tcp.h"
-#include "EtherShield.h"
+#include "../stm32f1xx_hal.h"
+#include "../ethernet/enc28j60.h"
+#include "../ethernet/ip_arp_udp_tcp.h"
+#include "../ethernet/EtherShield.h"
 #include "comm_lustro.h"
 
 /**
