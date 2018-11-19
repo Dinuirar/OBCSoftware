@@ -1,3 +1,8 @@
+// TODO
+// porzadek w nazwach plikow
+// junk code removal
+// lista rzeczy do zrobienia
+// obsluga karty SD
 
 /**
   ******************************************************************************
