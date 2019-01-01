@@ -64,6 +64,7 @@
 #include "lustro/sd_lustro.h"
 #include "lustro/config_lustro.h"
 #include "lustro/data_lustro.h"
+#include "lustro/MPU9250.h"
 
 #include <string.h>
 
@@ -593,6 +594,13 @@ void startReadSensors(void const * argument)
 	saveConfigADC( &hi2c1, aKadabra, configKadabra );
 	saveConfigADC( &hi2c1, aRaichu, configRaichu );
 	xSemaphoreGive(mxI2CHandle);
+
+	uint16_t dest1[3] = {0};
+	uint16_t dest2[3] = {0};
+	xSemaphoreTake(mxSPI2Handle, SPI2_TIMEOUT);
+	calibrateIMU(dest1, dest2);
+	xSemaphoreGive(mxSPI2Handle);
+
 	xSemaphoreGive(mxSensorConfigHandle);
 
 	uint16_t wDiglett = 0, wAbra = 0 , wKadabra = 0, wRaichu = 0;
@@ -600,8 +608,6 @@ void startReadSensors(void const * argument)
 	uint16_t wIMUAccX = 0, wIMUAccY = 0, wIMUAccZ = 0;
 	uint16_t wIMUMagX = 0, wIMUMagY = 0, wIMUMagZ = 0;
 	uint16_t wIMUTemp = 0;
-//	uint16_t wHumidity1 = 0, wTemperature1 = 0, wPressure1 = 0;
-//	uint16_t wHumidity2 = 0, wTemperature2 = 0, wPressure2 = 0;
 
 	uint16_t counter = 0;
 	int temp_int = 0;
@@ -634,13 +640,13 @@ void startReadSensors(void const * argument)
 //		xSemaphoreTake( mxSPI2Handle, SPI2_TIMEOUT);
 //		readIMUGyro( &wIMUGyroX, &wIMUGyroY, &wIMUGyroZ );
 //		xSemaphoreGive( mxSPI2Handle );
-
-		address[0] = 0xBB;
-		HAL_GPIO_WritePin(CS_IMU_GPIO_Port, CS_IMU_Pin, GPIO_PIN_RESET);
-		xSemaphoreTake( mxSPI2Handle, SPI2_TIMEOUT);
-		HAL_SPI_TransmitReceive(&hspi2, address, data, 15, HAL_MAX_DELAY);
-		xSemaphoreGive( mxSPI2Handle );
-		HAL_GPIO_WritePin(CS_IMU_GPIO_Port, CS_IMU_Pin, GPIO_PIN_SET);
+		IMURead(ACCEL_XOUT_H, 14, data);
+//		address[0] = 0xBB;
+//		HAL_GPIO_WritePin(CS_IMU_GPIO_Port, CS_IMU_Pin, GPIO_PIN_RESET);
+//		xSemaphoreTake( mxSPI2Handle, SPI2_TIMEOUT);
+//		HAL_SPI_TransmitReceive(&hspi2, address, data, 15, HAL_MAX_DELAY);
+//		xSemaphoreGive( mxSPI2Handle );
+//		HAL_GPIO_WritePin(CS_IMU_GPIO_Port, CS_IMU_Pin, GPIO_PIN_SET);
 		wIMUAccX = (uint16_t)data[1] << 8 | data[2];
 		wIMUAccY = (uint16_t)data[3] << 8 | data[4];
 		wIMUAccZ = (uint16_t)data[5] << 8 | data[6];

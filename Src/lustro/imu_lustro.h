@@ -12,5 +12,8 @@
 #include "stm32f1xx_hal.h"
 #include "cmsis_os.h"
 
+void IMURead(uint8_t addr_start, uint8_t how_many, uint8_t* data);
+void IMUWriteByte(uint8_t address, uint8_t value);
+void calibrateIMU(uint16_t* dest1, uint16_t* dest2);
 
 #endif /* IMU_LUSTRO_H_ */
